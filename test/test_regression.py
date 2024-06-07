@@ -1,3 +1,5 @@
+from sklearn import cross_decomposition
+from sklearn.cross_decomposition import PLSRegression
 from sklearn.datasets import make_regression
 from sklearn.feature_extraction import FeatureHasher
 from sklearn.linear_model import LinearRegression, Lasso, Ridge
@@ -8,7 +10,7 @@ from sklearn.svm import SVR
 from numpy import testing
 import random
 import unittest
-import sklearn_json as skljson
+import models2json
 
 
 class TestAPI(unittest.TestCase):
@@ -28,8 +30,8 @@ class TestAPI(unittest.TestCase):
         model.fit(self.X, self.y)
 
         # When
-        serialized_model = skljson.to_dict(model)
-        deserialized_model = skljson.from_dict(serialized_model)
+        serialized_model = models2json.to_dict(model)
+        deserialized_model = models2json.from_dict(serialized_model)
 
         # Then
         expected_predictions = model.predict(self.X)
@@ -42,8 +44,8 @@ class TestAPI(unittest.TestCase):
         model.fit(self.X_sparse, self.y_sparse)
 
         # When
-        serialized_model = skljson.to_dict(model)
-        deserialized_model = skljson.from_dict(serialized_model)
+        serialized_model = models2json.to_dict(model)
+        deserialized_model = models2json.from_dict(serialized_model)
 
         # Then
         expected_predictions = model.predict(self.X_sparse)
@@ -83,3 +85,6 @@ class TestAPI(unittest.TestCase):
         self.check_model(MLPRegressor())
         self.check_sparse_model(MLPRegressor())
 
+    def test_pls_regression(self):
+        self.check_model(PLSRegression(n_components=2))
+#        self.check_sparse_model(PLSRegression(n_components=2))

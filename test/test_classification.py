@@ -1,4 +1,5 @@
 from sklearn.datasets import make_classification
+from sklearn.decomposition import PCA
 from sklearn.feature_extraction import FeatureHasher
 from sklearn import svm, discriminant_analysis
 from sklearn.linear_model import LogisticRegression, Perceptron
@@ -10,7 +11,7 @@ import unittest
 import random
 import numpy as np
 from numpy import testing
-import sklearn_json as skljson
+import models2json
 
 
 class TestAPI(unittest.TestCase):
@@ -33,14 +34,18 @@ class TestAPI(unittest.TestCase):
             model.fit(self.X, self.y)
 
         # When
-        serialized_model = skljson.to_dict(model)
-        deserialized_model = skljson.from_dict(serialized_model)
+        serialized_model = models2json.to_dict(model)
+        deserialized_model = models2json.from_dict(serialized_model)
 
         # Then
-        expected_predictions = model.predict(self.X)
-        actual_predictions = deserialized_model.predict(self.X)
-
-        testing.assert_array_equal(expected_predictions, actual_predictions)
+        if hasattr(model, 'predict'):
+            expected_predictions = model.predict(self.X)
+            actual_predictions = deserialized_model.predict(self.X)
+            testing.assert_array_equal(expected_predictions, actual_predictions)
+        else:
+            expected_transformed_data = model.transform(self.X_sparse)
+            actual_transformed_data = deserialized_model.transform(self.X_sparse)
+            testing.assert_array_almost_equal(expected_transformed_data, actual_transformed_data)
 
     def check_sparse_model(self, model, abs=False):
         # Given
@@ -50,14 +55,18 @@ class TestAPI(unittest.TestCase):
             model.fit(self.X_sparse, self.y_sparse)
 
         # When
-        serialized_model = skljson.to_dict(model)
-        deserialized_model = skljson.from_dict(serialized_model)
+        serialized_model = models2json.to_dict(model)
+        deserialized_model = models2json.from_dict(serialized_model)
 
         # Then
-        expected_predictions = model.predict(self.X)
-        actual_predictions = deserialized_model.predict(self.X)
-
-        testing.assert_array_equal(expected_predictions, actual_predictions)
+        if hasattr(model, 'predict'):
+            expected_predictions = model.predict(self.X)
+            actual_predictions = deserialized_model.predict(self.X)
+            testing.assert_array_equal(expected_predictions, actual_predictions)
+        else:
+            expected_transformed_data = model.transform(self.X_sparse)
+            actual_transformed_data = deserialized_model.transform(self.X_sparse)
+            testing.assert_array_almost_equal(expected_transformed_data, actual_transformed_data)
 
     def check_model_json(self, model, model_name, abs=False):
         # Given
@@ -67,14 +76,18 @@ class TestAPI(unittest.TestCase):
             model.fit(self.X, self.y)
 
         # When
-        serialized_model = skljson.to_json(model, model_name)
-        deserialized_model = skljson.from_json(model_name)
+        models2json.to_json(model, model_name)
+        deserialized_model = models2json.from_json(model_name)
 
         # Then
-        expected_predictions = model.predict(self.X)
-        actual_predictions = deserialized_model.predict(self.X)
-
-        testing.assert_array_equal(expected_predictions, actual_predictions)
+        if hasattr(model, 'predict'):
+            expected_predictions = model.predict(self.X)
+            actual_predictions = deserialized_model.predict(self.X)
+            testing.assert_array_equal(expected_predictions, actual_predictions)
+        else:
+            expected_transformed_data = model.transform(self.X)
+            actual_transformed_data = deserialized_model.transform(self.X)
+            testing.assert_array_almost_equal(expected_transformed_data, actual_transformed_data)
 
     def check_sparse_model_json(self, model, model_name, abs=False):
         # Given
@@ -84,14 +97,18 @@ class TestAPI(unittest.TestCase):
             model.fit(self.X_sparse, self.y_sparse)
 
         # When
-        serialized_model = skljson.to_json(model, model_name)
-        deserialized_model = skljson.from_json(model_name)
+        serialized_model = models2json.to_json(model, model_name)
+        deserialized_model = models2json.from_json(model_name)
 
         # Then
-        expected_predictions = model.predict(self.X)
-        actual_predictions = deserialized_model.predict(self.X)
-
-        testing.assert_array_equal(expected_predictions, actual_predictions)
+        if hasattr(model, 'predict'):
+            expected_predictions = model.predict(self.X)
+            actual_predictions = deserialized_model.predict(self.X)
+            testing.assert_array_equal(expected_predictions, actual_predictions)
+        else:
+            expected_transformed_data = model.transform(self.X_sparse)
+            actual_transformed_data = deserialized_model.transform(self.X_sparse)
+            testing.assert_array_almost_equal(expected_transformed_data, actual_transformed_data)
 
     def test_bernoulli_nb(self):
         self.check_model(BernoulliNB())
@@ -196,4 +213,12 @@ class TestAPI(unittest.TestCase):
         model_name = 'mlp.json'
         self.check_model_json(MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), random_state=1), model_name)
         self.check_sparse_model_json(MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), random_state=1), model_name)
+
+    def test_pca(self):
+        self.check_model(PCA(n_components=2))
+        self.check_sparse_model(PCA(n_components=2))
+
+        model_name = 'pca.json'
+        self.check_model_json(PCA(n_components=2), model_name)
+        self.check_sparse_model_json(PCA(n_components=2), model_name)
 

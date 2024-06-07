@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "model2json"
+version = "0.1.0"
+description = "Export scikit-learn model files to JSON for sharing or deploying predictive models with peace of mind."
+authors = ["Raúl Marín <hi@raulmarin.dev>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+scikit-learn = "^1.5.0"
+
+[tool.poetry.group.dev.dependencies]
+poetry-types = "^0.5.1"
+mypy = "^1.10.0"
+pytest = "^8.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+plugins = ["mypy_extras.plugin"]
+
+[[tool.mypy.overrides]]
+module = ["sklearn", "sklearn.*"]
+ignore_missing_imports = true
