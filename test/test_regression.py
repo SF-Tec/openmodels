@@ -1,3 +1,4 @@
+import pytest
 from sklearn import cross_decomposition
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.datasets import make_regression
@@ -9,82 +10,94 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR
 from numpy import testing
 import random
-import unittest
-import models2json
+import model2json
 
 
-class TestAPI(unittest.TestCase):
+@pytest.fixture(scope="module")
+def data():
+    X, y = make_regression(
+        n_samples=50, n_features=3, n_informative=3, random_state=0, shuffle=False
+    )
 
-    def setUp(self):
-        self.X, self.y = make_regression(n_samples=50, n_features=3, n_informative=3, random_state=0, shuffle=False)
+    feature_hasher = FeatureHasher(n_features=3)
+    features = []
+    for i in range(0, 100):
+        features.append(
+            {
+                "a": random.randint(0, 2),
+                "b": random.randint(3, 5),
+                "c": random.randint(6, 8),
+            }
+        )
+    y_sparse = [random.random() for i in range(0, 100)]
+    X_sparse = feature_hasher.transform(features)
 
-        feature_hasher = FeatureHasher(n_features=3)
-        features = []
-        for i in range(0, 100):
-            features.append({'a': random.randint(0, 2), 'b': random.randint(3, 5), 'c': random.randint(6, 8)})
-        self.y_sparse = [random.random() for i in range(0, 100)]
-        self.X_sparse = feature_hasher.transform(features)
+    return X, y, X_sparse, y_sparse
 
-    def check_model(self, model):
-        # Given
-        model.fit(self.X, self.y)
 
-        # When
-        serialized_model = models2json.to_dict(model)
-        deserialized_model = models2json.from_dict(serialized_model)
+def check_model(model, X, y):
+    model.fit(X, y)
+    serialized_model = model2json.to_dict(model)
+    deserialized_model = model2json.from_dict(serialized_model)
+    expected_predictions = model.predict(X)
+    actual_predictions = deserialized_model.predict(X)
+    testing.assert_array_equal(expected_predictions, actual_predictions)
 
-        # Then
-        expected_predictions = model.predict(self.X)
-        actual_predictions = deserialized_model.predict(self.X)
 
-        testing.assert_array_equal(expected_predictions, actual_predictions)
+def test_linear_regression(data):
+    X, y, X_sparse, y_sparse = data
+    check_model(LinearRegression(), X, y)
+    check_model(LinearRegression(), X_sparse, y_sparse)
 
-    def check_sparse_model(self, model):
-        # Given
-        model.fit(self.X_sparse, self.y_sparse)
 
-        # When
-        serialized_model = models2json.to_dict(model)
-        deserialized_model = models2json.from_dict(serialized_model)
+def test_lasso_regression(data):
+    X, y, X_sparse, y_sparse = data
+    check_model(Lasso(alpha=0.1), X, y)
+    check_model(Lasso(alpha=0.1), X_sparse, y_sparse)
 
-        # Then
-        expected_predictions = model.predict(self.X_sparse)
-        actual_predictions = deserialized_model.predict(self.X_sparse)
 
-        testing.assert_array_equal(expected_predictions, actual_predictions)
+def test_ridge_regression(data):
+    X, y, X_sparse, y_sparse = data
+    check_model(Ridge(alpha=0.5), X, y)
+    check_model(Ridge(alpha=0.5), X_sparse, y_sparse)
 
-    def test_linear_regression(self):
-        self.check_model(LinearRegression())
-        self.check_sparse_model(LinearRegression())
 
-    def test_lasso_regression(self):
-        self.check_model(Lasso(alpha=0.1))
-        self.check_sparse_model(Lasso(alpha=0.1))
+def test_svr(data):
+    X, y, X_sparse, y_sparse = data
+    check_model(SVR(gamma="scale", C=1.0, epsilon=0.2), X, y)
+    check_model(SVR(gamma="scale", C=1.0, epsilon=0.2), X_sparse, y_sparse)
 
-    def test_ridge_regression(self):
-        self.check_model(Ridge(alpha=0.5))
-        self.check_sparse_model(Ridge(alpha=0.5))
 
-    def test_svr(self):
-        self.check_model(SVR(gamma='scale', C=1.0, epsilon=0.2))
-        self.check_sparse_model(SVR(gamma='scale', C=1.0, epsilon=0.2))
+def test_decision_tree_regression(data):
+    X, y, X_sparse, y_sparse = data
+    check_model(DecisionTreeRegressor(), X, y)
+    check_model(DecisionTreeRegressor(), X_sparse, y_sparse)
 
-    def test_decision_tree_regression(self):
-        self.check_model(DecisionTreeRegressor())
-        self.check_sparse_model(DecisionTreeRegressor())
 
-    def test_gradient_boosting_regression(self):
-        self.check_model(GradientBoostingRegressor())
-        self.check_sparse_model(GradientBoostingRegressor())
+def test_gradient_boosting_regression(data):
+    X, y, X_sparse, y_sparse = data
+    check_model(GradientBoostingRegressor(), X, y)
+    check_model(GradientBoostingRegressor(), X_sparse, y_sparse)
 
-    def test_random_forest_regression(self):
-        self.check_model(RandomForestRegressor(max_depth=2, random_state=0, n_estimators=100))
-        self.check_sparse_model(RandomForestRegressor(max_depth=2, random_state=0, n_estimators=100))
 
-    def test_mlp_regression(self):
-        self.check_model(MLPRegressor())
-        self.check_sparse_model(MLPRegressor())
+def test_random_forest_regression(data):
+    X, y, X_sparse, y_sparse = data
+    check_model(
+        RandomForestRegressor(max_depth=2, random_state=0, n_estimators=100), X, y
+    )
+    check_model(
+        RandomForestRegressor(max_depth=2, random_state=0, n_estimators=100),
+        X_sparse,
+        y_sparse,
+    )
 
-    def test_pls_regression(self):
-        self.check_model(PLSRegression(n_components=2))
-#        self.check_sparse_model(PLSRegression(n_components=2))
+
+def test_mlp_regression(data):
+    X, y, X_sparse, y_sparse = data
+    check_model(MLPRegressor(), X, y)
+    check_model(MLPRegressor(), X_sparse, y_sparse)
+
+
+def test_pls_regression(data):
+    X, y, _, _ = data
+    check_model(PLSRegression(n_components=2), X, y)
