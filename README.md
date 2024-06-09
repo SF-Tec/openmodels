@@ -34,8 +34,8 @@ from sklearn.ensemble import RandomForestClassifier
 
 model = RandomForestClassifier(n_estimators=10, max_depth=5, random_state=0).fit(X, y)
 
-model2json.to_json(model, file_name)
-deserialized_model = model2json.from_json(file_name)
+model2json.model_to_json_file(model, file_path)
+deserialized_model = model2json.model_from_json_file(file_path)
 
 deserialized_model.predict(X)
 ```
@@ -48,7 +48,7 @@ model2json requires scikit-learn >= 1.5.0
 
 ## Currently Supported scikit-learn Models
 
-- Classification
+Classification
 
 - `sklearn.naive_bayes.BernoulliNB`
 - `sklearn.naive_bayes.ComplementNB`
@@ -59,9 +59,19 @@ model2json requires scikit-learn >= 1.5.0
 - `sklearn.decomposition.PCA`
 - `sklearn.linear_model.Perceptron`
 
-- Regression
+Regression
+
 - `sklearn.linear_model.Lasso`
 - `sklearn.linear_model.LinearRegression`
 - `sklearn.cross_decomposition.PLSRegression`
-- `sklearn.ensemble.RandomForestRegressor`
 - `sklearn.linear_model.Ridge`
+
+## Contributing
+
+We welcome contributions to model2json from anyone interested in improving the package. Whether you have ideas for new features, bug reports, or just want to help improve the code, we appreciate your contributions! You are also welcome to see the [Project Board]() to see what we are currently working on.
+
+To contribute to model2json, please follow the [contributing guidelines](CONTRIBUTING.md).
+
+## License
+
+This package is distributed under the MIT license. See the [LICENSE](LICENSE) file for more information.
