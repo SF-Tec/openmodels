@@ -19,7 +19,7 @@ N_INFORMATIVE = 3
 N_REDUNDANT = 0
 RANDOM_STATE = 0
 N_ESTIMATORS = 10
-MAx_DEPTH = 5
+MAX_DEPTH = 5
 LEARNING_RATE = 1.0
 SOLVER = "lbfgs"
 ALPHA = 1e-5
@@ -138,7 +138,7 @@ def test_random_forest(data):
     x, y, x_sparse, y_sparse = data
     test_model(
         RandomForestClassifier(
-            n_estimators=N_ESTIMATORS, max_depth=MAx_DEPTH, random_state=RANDOM_STATE
+            n_estimators=N_ESTIMATORS, max_depth=MAX_DEPTH, random_state=RANDOM_STATE
         ),
         x,
         y,

@@ -1,3 +1,4 @@
+import random
 import pytest
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.datasets import make_regression
@@ -7,7 +8,6 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR
-import random
 from model2json.test_helpers import test_model
 
 
