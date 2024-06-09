@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Type
 import numpy as np
 
 import sklearn
+from sklearn.base import check_is_fitted
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
@@ -135,7 +136,14 @@ def model_to_json_dict(model: sklearn.base.BaseEstimator) -> Dict[str, Any]:
     -------
     Dict[str, Any]
         The JSON-serializable dictionary representation of the model.
+
+    Raises
+    ------
+    NotFittedError
+        If the model has not been fitted yet.
     """
+    check_is_fitted(model)
+
     attribute_keys = [
         key
         for key in dir(model)
