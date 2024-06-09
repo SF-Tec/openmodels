@@ -25,7 +25,6 @@
 *.log
 *.sql
 *.sqlite
-*.json
 
 # OS generated files #
 ######################
@@ -44,10 +43,9 @@ dist/
 sklearn_json.egg-info/
 .mypy_cache/
 .pytest_cache/
-.vscode/
 .venv/
 .ipynb_checkpoints/
-.pytest_cache/
-.vscode/
-.venv/
-.ipynb_checkpoints/
+
+# Testing #
+###########
+test/temp/*
