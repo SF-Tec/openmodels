@@ -1,12 +1,12 @@
-# model2json
+# OpenModels
 
-Welcome to model2json, a package that allows exporting scikit-learn model files to JSON for sharing or deploying predictive models with a peace of mind.
+Welcome to OpenModels, a package that allows exporting scikit-learn model files to JSON for sharing or deploying predictive models with a peace of mind.
 
-# Why model2json?
+# Why OpenModels?
 
 Other methods for exporting scikit-learn models require Pickle or Joblib (based on Pickle). Serializing model files with Pickle provides a simple attack vector for malicious users-- they give an attacker the ability to execute arbitrary code wherever the file is deserialized. For an example see: https://www.smartfile.com/blog/python-pickle-security-problems-and-solutions/.
 
-model2json is a safe and transparent solution for exporting scikit-learn model files.
+OpenModels is a safe and transparent solution for exporting scikit-learn model files.
 
 ### Safe
 
@@ -18,24 +18,24 @@ Model files are serialized in JSON (i.e., not binary), so you have the ability t
 
 # Getting Started
 
-model2json makes exporting model files to JSON simple.
+OpenModels makes exporting model files to JSON simple.
 
 ## Install
 
 ```
-pip install model2json
+pip install OpenModels
 ```
 
 ## Example Usage
 
 ```python
-import model2json
+import OpenModels
 from sklearn.ensemble import RandomForestClassifier
 
 model = RandomForestClassifier(n_estimators=10, max_depth=5, random_state=0).fit(X, y)
 
-model2json.model_to_json_file(model, file_path)
-deserialized_model = model2json.model_from_json_file(file_path)
+OpenModels.model_to_json_file(model, file_path)
+deserialized_model = OpenModels.model_from_json_file(file_path)
 
 deserialized_model.predict(X)
 ```
@@ -44,7 +44,7 @@ deserialized_model.predict(X)
 
 The list of supported models is rapidly growing. If you have a request for a model or feature, please reach out to info@sftec.es.
 
-model2json requires scikit-learn >= 1.5.0
+OpenModels requires scikit-learn >= 1.5.0
 
 ## Currently Supported scikit-learn Models
 
@@ -68,9 +68,32 @@ Regression
 
 ## Contributing
 
-We welcome contributions to model2json from anyone interested in improving the package. Whether you have ideas for new features, bug reports, or just want to help improve the code, we appreciate your contributions! You are also welcome to see the [Project Board]() to see what we are currently working on.
+We welcome contributions to OpenModels from anyone interested in improving the package. Whether you have ideas for new features, bug reports, or just want to help improve the code, we appreciate your contributions! You are also welcome to see the [Project Board]() to see what we are currently working on.
 
-To contribute to model2json, please follow the [contributing guidelines](CONTRIBUTING.md).
+To contribute to OpenModels, please follow the [contributing guidelines](CONTRIBUTING.md).
+
+### Running the Tests
+
+This project uses `poetry` for dependency management and packaging. To run the tests, follow these steps:
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/your-username/your-repository.git
+   cd your-repository
+   ```
+
+2. **Create a virtual environment and install dependencies:**
+
+   ```bash
+    poetry install
+   ```
+
+3. **Run the tests:**
+
+   ```bash
+    poetry run pytest
+   ```
 
 ## License
 

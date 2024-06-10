@@ -8,7 +8,7 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR
-from model2json.test_helpers import test_model
+from openmodels.test_helpers import test_model
 
 
 @pytest.fixture(scope="module")

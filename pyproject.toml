@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "model2json"
+name = "openmodels"
 version = "0.1.0"
 description = "Export scikit-learn model files to JSON for sharing or deploying predictive models with peace of mind."
 authors = [

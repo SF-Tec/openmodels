@@ -1,6 +1,6 @@
 import numpy as np
 from numpy import testing
-import model2json
+import openmodels
 
 
 def fit_model(model, x, y, abs=False):
@@ -101,13 +101,13 @@ def test_model(model, x, y, x_sparse, y_sparse, model_name, abs=False):
         fit_model(model, x_sparse, y_sparse, abs)
 
     # Serialize and deserialize the model
-    serialized_model = model2json.model_to_json_dict(model)
-    deserialized_model = model2json.model_from_json_dict(serialized_model)
+    serialized_model = openmodels.model_to_json_dict(model)
+    deserialized_model = openmodels.model_from_json_dict(serialized_model)
 
     # Serialize and deserialize the model to JSON
     model_file_path = f"./test/temp/{model_name}"
-    model2json.model_to_json_file(model, model_file_path)
-    deserialized_model_json = model2json.model_from_json_file(model_file_path)
+    openmodels.model_to_json_file(model, model_file_path)
+    deserialized_model_json = openmodels.model_from_json_file(model_file_path)
 
     # Check predictions or transformed data
     if hasattr(model, "predict"):
