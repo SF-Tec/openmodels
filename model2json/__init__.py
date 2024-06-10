@@ -4,6 +4,7 @@ import numpy as np
 
 import sklearn
 from sklearn.base import check_is_fitted
+from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
@@ -36,6 +37,7 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis,
     "LinearRegression": LinearRegression,
     "LogisticRegression": LogisticRegression,
+    "KMeans": KMeans,
     "MLPClassifier": MLPClassifier,
     "MLPRegressor": MLPRegressor,
     "MultinomialNB": MultinomialNB,
@@ -63,7 +65,7 @@ SUPPORTED_TYPES: List[Type] = [
 ]
 
 
-def _convert_to_json_serializable(value: Any) -> Any:
+def _convert_to_json_types(value: Any) -> Any:
     """
     Convert a value to a JSON-serializable type.
 
@@ -93,13 +95,13 @@ def _convert_to_json_serializable(value: Any) -> Any:
     return value
 
 
-def _convert_from_json_serializable(value: Any) -> Any:
+def _convert_to_sklearn_types(value: Any) -> Any:
     """
-    Convert a JSON-deserialized value to its original type.
+    Convert a JSON-deserialized value to its sklearn type.
 
     This process may entail adding elements that were removed during the
     serialization process, changing the type of certain elements to their
-    original type, or performing other transformations as necessary.
+    sklearn type, or performing other transformations as necessary.
 
     Parameters
     ----------
@@ -144,16 +146,27 @@ def model_to_json_dict(model: sklearn.base.BaseEstimator) -> Dict[str, Any]:
     """
     check_is_fitted(model)
 
-    attribute_keys = [
+    # IMPORTANT: We need to filter only the attributes that are needed to rebuild the
+    # model (estimated and fitted attributes)
+    # https://scikit-learn.org/stable/developers/develop.html#developer-api-for-set-output
+    # https://scikit-learn.org/stable/developers/develop.html#estimated-attributes
+
+    # 1. Filter out methods and internal
+    filtered_attribute_keys = [
         key
         for key in dir(model)
         if not callable(getattr(model, key)) and not key.endswith("__")
     ]
 
+    # 2. Filter the attributes that our library currently allows to serialize (some
+    # may need a type conversion)
     filtered_attribute_keys = [
-        key for key in attribute_keys if type(getattr(model, key)) in SUPPORTED_TYPES
+        key
+        for key in filtered_attribute_keys
+        if type(getattr(model, key)) in SUPPORTED_TYPES
     ]
 
+    # 3. Filter the attributes that allow setting a value
     filtered_attribute_keys = [
         key
         for key in filtered_attribute_keys
@@ -161,14 +174,15 @@ def model_to_json_dict(model: sklearn.base.BaseEstimator) -> Dict[str, Any]:
         or getattr(type(model), key).fset is not None
     ]
 
+    # 4. Convert non-serializable types to serializable ones
     attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
     attribute_types = [type(value) for value in attribute_values]
-    attribute_untyped_values = [
-        _convert_to_json_serializable(value) for value in attribute_values
+    serializable_attribute_values = [
+        _convert_to_json_types(value) for value in attribute_values
     ]
 
     serialized_model = {
-        "attributes": dict(zip(filtered_attribute_keys, attribute_untyped_values)),
+        "attributes": dict(zip(filtered_attribute_keys, serializable_attribute_values)),
         "attribute_types": [str(attr_type) for attr_type in attribute_types],
         "estimator_class": model.__class__.__name__,
         "params": model.get_params(),
@@ -198,7 +212,7 @@ def model_from_json_dict(model_dict: Dict[str, Any]) -> sklearn.base.BaseEstimat
     )
 
     for attribute, value in model_dict["attributes"].items():
-        setattr(deserialized_model, attribute, _convert_from_json_serializable(value))
+        setattr(deserialized_model, attribute, _convert_to_sklearn_types(value))
 
     return deserialized_model
 

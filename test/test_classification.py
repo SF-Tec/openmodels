@@ -1,5 +1,6 @@
 import random
 import pytest
+from sklearn.cluster import KMeans
 from sklearn.datasets import make_classification
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction import FeatureHasher
@@ -173,3 +174,8 @@ def test_mlp(data):
 def test_pca(data):
     x, _, x_sparse, _ = data
     test_model(PCA(n_components=N_COMPONENTS), x, x, x_sparse, x_sparse, "pca.json")
+
+
+def test_kmeans(data):
+    x, _, x_sparse, _ = data
+    test_model(KMeans(), x, x, x_sparse, x_sparse, "kmeans.json")
