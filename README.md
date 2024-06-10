@@ -72,7 +72,7 @@ We welcome contributions to OpenModels from anyone interested in improving the p
 
 To contribute to OpenModels, please follow the [contributing guidelines](CONTRIBUTING.md).
 
-### Running the Tests
+## Running the Tests
 
 This project uses `poetry` for dependency management and packaging. To run the tests, follow these steps:
 
