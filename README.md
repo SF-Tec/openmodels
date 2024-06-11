@@ -80,7 +80,7 @@ This project uses `poetry` for dependency management and packaging. To run the t
 
    ```bash
    git clone https://github.com/SF-Tec/openmodels.git
-   cd your-repository
+   cd openmodels
    ```
 
 2. **Create a virtual environment and install dependencies:**
