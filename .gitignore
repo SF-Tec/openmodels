@@ -48,4 +48,4 @@ sklearn_json.egg-info/
 
 # Testing #
 ###########
-test/temp/*
+test/temp/*.json
