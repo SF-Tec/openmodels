@@ -79,7 +79,7 @@ This project uses `poetry` for dependency management and packaging. To run the t
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/your-username/your-repository.git
+   git clone https://github.com/SF-Tec/openmodels.git
    cd your-repository
    ```
 
