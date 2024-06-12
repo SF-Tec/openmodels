@@ -7,7 +7,12 @@ from sklearn.base import check_is_fitted
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.ensemble import (
+    RandomForestRegressor,
+    RandomForestClassifier,
+    GradientBoostingClassifier,
+    GradientBoostingRegressor,
+)
 from sklearn.svm import SVR, SVC
 from sklearn.linear_model import (
     LogisticRegression,
@@ -33,6 +38,8 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "DecisionTreeRegressor": DecisionTreeRegressor,
     "DummyClassifier": DummyClassifier,
     "GaussianNB": GaussianNB,
+    "GradientBoostingClassifier": GradientBoostingClassifier,
+    "GradientBoostingRegressor": GradientBoostingRegressor,
     "Lasso": Lasso,
     "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis,
     "LinearRegression": LinearRegression,
@@ -65,6 +72,17 @@ SUPPORTED_TYPES: List[Type] = [
 ]
 
 
+def array_to_list(array):
+    if isinstance(array, np.ndarray):
+        return array_to_list(array.tolist())
+    elif isinstance(array, list):
+        return [array_to_list(item) for item in array]
+    elif isinstance(array, tuple):
+        return tuple(array_to_list(item) for item in array)
+    else:
+        return array
+
+
 def _convert_to_json_types(value: Any) -> Any:
     """
     Convert a value to a JSON-serializable type.
@@ -90,8 +108,8 @@ def _convert_to_json_types(value: Any) -> Any:
     >>> convert_to_json_serializable({'a': 1, 'b': np.array([1, 2, 3])})
     {'a': 1, 'b': [1, 2, 3]}
     """
-    if isinstance(value, np.ndarray):
-        return value.tolist()
+    if isinstance(value, np.ndarray) or isinstance(value, list):
+        return array_to_list(value)
     return value
 
 
