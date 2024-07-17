@@ -91,8 +91,8 @@ class SklearnSerializer:
     The serializer supports a wide range of scikit-learn estimators and handles
     the conversion of numpy arrays and other non-JSON-serializable types.
 
-    Attributes:
-    -----------
+    Attributes
+    ----------
     SUPPORTED_ESTIMATORS : Dict[str, Type[BaseEstimator]]
         A dictionary of supported scikit-learn estimator classes.
     SUPPORTED_TYPES : List[Type]
@@ -104,13 +104,13 @@ class SklearnSerializer:
         """
         Convert a value to a serializable type.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         value : Any
             The value to convert.
 
-        Returns:
-        --------
+        Returns
+        -------
         Any
             The serializable representation of the value.
         """
@@ -123,13 +123,13 @@ class SklearnSerializer:
         """
         Convert a JSON-deserialized value to its scikit-learn type.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         value : Any
             The JSON-deserialized value.
 
-        Returns:
-        --------
+        Returns
+        -------
         Any
             The scikit-learn type of the value.
         """
@@ -138,17 +138,17 @@ class SklearnSerializer:
         return value
 
     @staticmethod
-    def _array_to_list(array):
+    def _array_to_list(array: Any) -> Any:
         """
         Recursively convert numpy arrays to nested lists.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         array : array-like
             The array or nested structure to convert.
 
-        Returns:
-        --------
+        Returns
+        -------
         list or Any
             The input converted to a nested list structure, or the original value if not an array.
         """
@@ -168,20 +168,29 @@ class SklearnSerializer:
         This method extracts relevant attributes from the model, converts them to
         JSON-serializable types, and returns a dictionary representation of the model.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         model : BaseEstimator
             The scikit-learn estimator to serialize.
 
-        Returns:
-        --------
+        Returns
+        -------
         Dict[str, Any]
             A dictionary representation of the model.
 
-        Raises:
-        -------
+        Raises
+        ------
         SerializationError
             If the model has not been fitted or if there's an error during serialization.
+
+        Examples
+        --------
+        >>> from sklearn.linear_model import LogisticRegression
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=100, n_features=20, n_classes=2)
+        >>> model = LogisticRegression().fit(X, y)
+        >>> serializer = SklearnSerializer()
+        >>> serialized_dict = serializer.serialize(model)
         """
         try:
             check_is_fitted(model)
@@ -224,20 +233,26 @@ class SklearnSerializer:
         This method reconstructs a scikit-learn estimator from its dictionary
         representation, converting attributes back to their original types.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         data : Dict[str, Any]
             The dictionary representation of the model.
 
-        Returns:
-        --------
+        Returns
+        -------
         BaseEstimator
             The deserialized scikit-learn estimator.
 
-        Raises:
-        -------
+        Raises
+        ------
         UnsupportedEstimatorError
             If the estimator class is not supported.
+
+        Examples
+        --------
+        >>> serializer = SklearnSerializer()
+        >>> deserialized_model = serializer.deserialize(serialized_dict)
+        >>> predictions = deserialized_model.predict(X_test)
         """
         estimator_class = data["estimator_class"]
         if estimator_class not in SUPPORTED_ESTIMATORS:

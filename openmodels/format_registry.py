@@ -16,6 +16,11 @@ class FormatRegistry:
 
     This class manages the registration and retrieval of format converters,
     allowing the SerializationManager to support multiple serialization formats.
+
+    Attributes
+    ----------
+    _converters : Dict[str, Type[FormatConverter]]
+        A dictionary mapping format names to their respective converter classes.
     """
 
     _converters: Dict[str, Type[FormatConverter]] = {}
@@ -31,6 +36,10 @@ class FormatRegistry:
             The name of the format (e.g., "json", "pickle").
         converter : Type[FormatConverter]
             The converter class for the format.
+
+        Examples
+        --------
+        >>> FormatRegistry.register("json", JSONConverter)
         """
         cls._converters[format_name] = converter
 
@@ -53,6 +62,11 @@ class FormatRegistry:
         ------
         UnsupportedFormatError
             If the specified format is not supported.
+
+        Examples
+        --------
+        >>> json_converter = FormatRegistry.get_converter("json")
+        >>> serialized_data = json_converter.serialize_to_format(data_dict)
         """
         if format_name not in cls._converters:
             raise UnsupportedFormatError(f"Unsupported format: {format_name}")

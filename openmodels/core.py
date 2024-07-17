@@ -8,12 +8,12 @@ for serializing and deserializing machine learning models using various formats.
 from typing import Any
 from .protocols import ModelSerializer
 from .format_registry import FormatRegistry
-from .exceptions import SerializationError, DeserializationError, UnsupportedFormatError
+from .exceptions import SerializationError, DeserializationError
 
 
 class SerializationManager:
     """
-    Manages the serialization and deserialization of machine learning models.
+    Manage the serialization and deserialization of machine learning models.
 
     This class coordinates the process of converting models to various formats
     and back, using specified model serializers and format converters.
@@ -57,25 +57,20 @@ class SerializationManager:
             If the model serializer doesn't return a dictionary or if there's an error during serialization.
         UnsupportedFormatError
             If the specified format is not supported.
-        """
-        try:
-            converter = FormatRegistry.get_converter(format_name)
-        except UnsupportedFormatError as e:
-            raise UnsupportedFormatError(
-                f"Unsupported format for serialization: {format_name}"
-            ) from e
 
-        try:
-            serialized_dict = self.model_serializer.serialize(model)
-            if not isinstance(serialized_dict, dict):
-                raise SerializationError(
-                    f"Model serializer must return a dict, got {type(serialized_dict)}"
-                )
-            return converter.serialize_to_format(serialized_dict)
-        except Exception as e:
+        Examples
+        --------
+        >>> manager = SerializationManager(SklearnSerializer())
+        >>> model = LogisticRegression()
+        >>> serialized_model = manager.serialize(model, format_name="json")
+        """
+        converter = FormatRegistry.get_converter(format_name)
+        serialized_dict = self.model_serializer.serialize(model)
+        if not isinstance(serialized_dict, dict):
             raise SerializationError(
-                f"Error during model serialization: {str(e)}"
-            ) from e
+                f"Model serializer must return a dict, got {type(serialized_dict)}"
+            )
+        return converter.serialize_to_format(serialized_dict)
 
     def deserialize(self, serialized_model: Any, format_name: str = "json") -> Any:
         """
@@ -99,22 +94,17 @@ class SerializationManager:
             If the format converter doesn't return a dictionary or if there's an error during deserialization.
         UnsupportedFormatError
             If the specified format_name is not supported.
-        """
-        try:
-            converter = FormatRegistry.get_converter(format_name)
-        except UnsupportedFormatError as e:
-            raise UnsupportedFormatError(
-                f"Unsupported format for deserialization: {format_name}"
-            ) from e
 
-        try:
-            deserialized_dict = converter.deserialize_from_format(serialized_model)
-            if not isinstance(deserialized_dict, dict):
-                raise DeserializationError(
-                    f"Format converter must return a dict, got {type(deserialized_dict)}"
-                )
-            return self.model_serializer.deserialize(deserialized_dict)
-        except Exception as e:
+        Examples
+        --------
+        >>> manager = SerializationManager(SklearnSerializer())
+        >>> deserialized_model = manager.deserialize(serialized_model, format_name="json")
+        >>> predictions = deserialized_model.predict(X_test)
+        """
+        converter = FormatRegistry.get_converter(format_name)
+        deserialized_dict = converter.deserialize_from_format(serialized_model)
+        if not isinstance(deserialized_dict, dict):
             raise DeserializationError(
-                f"Error during model deserialization: {str(e)}"
-            ) from e
+                f"Format converter must return a dict, got {type(deserialized_dict)}"
+            )
+        return self.model_serializer.deserialize(deserialized_dict)
