@@ -24,11 +24,3 @@ class UnsupportedFormatError(OpenModelsError):
 
 class UnsupportedEstimatorError(OpenModelsError):
     """Exception raised when an unsupported estimator is encountered."""
-
-
-class ModelSerializerError(OpenModelsError):
-    """Exception raised when there's an error in the ModelSerializer."""
-
-
-class FormatConverterError(OpenModelsError):
-    """Exception raised when there's an error in a FormatConverter."""

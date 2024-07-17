@@ -35,6 +35,9 @@ from sklearn.discriminant_analysis import (
 from sklearn.dummy import DummyClassifier
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.exceptions import NotFittedError
+
+from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
 
 # Dictionary of supported estimators
 SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
@@ -177,10 +180,13 @@ class SklearnSerializer:
 
         Raises:
         -------
-        sklearn.exceptions.NotFittedError
-            If the model has not been fitted.
+        SerializationError
+            If the model has not been fitted or if there's an error during serialization.
         """
-        check_is_fitted(model)
+        try:
+            check_is_fitted(model)
+        except NotFittedError as e:
+            raise SerializationError("Cannot serialize an unfitted model") from e
 
         filtered_attribute_keys = [
             key
@@ -230,12 +236,14 @@ class SklearnSerializer:
 
         Raises:
         -------
-        ValueError
+        UnsupportedEstimatorError
             If the estimator class is not supported.
         """
         estimator_class = data["estimator_class"]
         if estimator_class not in SUPPORTED_ESTIMATORS:
-            raise ValueError(f"Unsupported estimator class: {estimator_class}")
+            raise UnsupportedEstimatorError(
+                f"Unsupported estimator class: {estimator_class}"
+            )
 
         model = SUPPORTED_ESTIMATORS[estimator_class](**data["params"])
 
