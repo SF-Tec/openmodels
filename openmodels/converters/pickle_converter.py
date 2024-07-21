@@ -7,8 +7,10 @@ This module provides a converter for serializing to and from pickle format.
 import pickle
 from typing import Any, Dict
 
+from openmodels.protocols import FormatConverter
 
-class PickleConverter:
+
+class PickleConverter(FormatConverter):
     """
     Converter for pickle format.
 

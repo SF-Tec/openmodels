@@ -38,6 +38,7 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.exceptions import NotFittedError
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
+from openmodels.protocols import ModelSerializer
 
 # Dictionary of supported estimators
 SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
@@ -81,7 +82,7 @@ SUPPORTED_TYPES: List[Type] = [
 ]
 
 
-class SklearnSerializer:
+class SklearnSerializer(ModelSerializer):
     """
     Serializer for scikit-learn estimators.
 

@@ -7,8 +7,10 @@ This module provides a converter for serializing to and from JSON format.
 import json
 from typing import Any, Dict
 
+from openmodels.protocols import FormatConverter
 
-class JSONConverter:
+
+class JSONConverter(FormatConverter):
     """
     Converter for JSON format.
 
