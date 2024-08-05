@@ -116,7 +116,7 @@ def test_transformed_data(
     )
 
 
-def test_model(
+def run_test_model(
     model: Union[BaseEstimator, ModelType],
     x: np.ndarray,
     y: np.ndarray,
