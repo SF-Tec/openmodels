@@ -223,8 +223,8 @@ class SklearnSerializer(ModelSerializer):
             "attribute_types": [str(attr_type) for attr_type in attribute_types],
             "estimator_class": model.__class__.__name__,
             "params": model.get_params(),
-            "producer_name": "sklearn",
-            "producer_version": sklearn.__version__,
+            "producer_name": model.__module__.split(".")[0],
+            "producer_version": model.__getstate__()["_sklearn_version"],
         }
 
     def deserialize(self, data: Dict[str, Any]) -> BaseEstimator:
