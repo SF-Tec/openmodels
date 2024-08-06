@@ -54,7 +54,8 @@ class SerializationManager:
         Raises
         ------
         SerializationError
-            If the model serializer doesn't return a dictionary or if there's an error during serialization.
+            If the model serializer doesn't return a dictionary or if there's an error during
+            serialization.
         UnsupportedFormatError
             If the specified format is not supported.
 
@@ -91,7 +92,8 @@ class SerializationManager:
         Raises
         ------
         DeserializationError
-            If the format converter doesn't return a dictionary or if there's an error during deserialization.
+            If the format converter doesn't return a dictionary or if there's an error during
+            deserialization.
         UnsupportedFormatError
             If the specified format_name is not supported.
 

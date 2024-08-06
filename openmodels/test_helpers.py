@@ -1,6 +1,6 @@
 """
-This file contains functions for testing the serialization and deserialization of scikit-learn models
-using the `openmodels` library.
+This file contains functions for testing the serialization and deserialization of scikit-learn
+models using the `openmodels` library.
 """
 
 import os
