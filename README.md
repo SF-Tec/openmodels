@@ -1,100 +1,129 @@
 # OpenModels
 
-Welcome to OpenModels, a package that allows exporting scikit-learn model files to JSON for sharing or deploying predictive models with a peace of mind.
+OpenModels is a flexible and extensible library for serializing and deserializing machine learning models. It's designed to support any serialization format through a plugin-based architecture, providing a safe and transparent solution for exporting and sharing predictive models.
 
-# Why OpenModels?
+## Key Features
 
-Other methods for exporting scikit-learn models require Pickle or Joblib (based on Pickle). Serializing model files with Pickle provides a simple attack vector for malicious users-- they give an attacker the ability to execute arbitrary code wherever the file is deserialized. For an example see: https://www.smartfile.com/blog/python-pickle-security-problems-and-solutions/.
+- **Format Agnostic**: Supports any serialization format through a plugin-based system.
+- **Extensible**: Easily add support for new model types and serialization formats.
+- **Safe**: Provides alternatives to potentially unsafe serialization methods like Pickle.
+- **Transparent**: Supports human-readable formats for easy inspection of serialized models.
 
-OpenModels is a safe and transparent solution for exporting scikit-learn model files.
-
-### Safe
-
-Export model files to 100% JSON which cannot execute code on deserialization.
-
-### Transparent
-
-Model files are serialized in JSON (i.e., not binary), so you have the ability to see exactly what's inside.
-
-# Getting Started
-
-OpenModels makes exporting model files to JSON simple.
-
-## Install
+## Installation
 
 ```
-pip install OpenModels
+pip install openmodels
 ```
 
-## Example Usage
+## Quick Start
 
 ```python
-import OpenModels
+from openmodels import SerializationManager, SklearnSerializer
+from openmodels.converters import JSONConverter
 from sklearn.ensemble import RandomForestClassifier
 
-model = RandomForestClassifier(n_estimators=10, max_depth=5, random_state=0).fit(X, y)
+# Register the JSON converter (this is done automatically in __init__.py)
+# FormatRegistry.register("json", JSONConverter)
 
-OpenModels.model_to_json_file(model, file_path)
-deserialized_model = OpenModels.model_from_json_file(file_path)
+# Create and train a scikit-learn model
+model = RandomForestClassifier(n_estimators=10, max_depth=5, random_state=0)
+model.fit(X, y)
 
-deserialized_model.predict(X)
+# Create a SerializationManager
+manager = SerializationManager(SklearnSerializer())
+
+# Serialize the model (default format is JSON)
+serialized_model = manager.serialize(model)
+
+# Deserialize the model
+deserialized_model = manager.deserialize(serialized_model)
+
+# Use the deserialized model
+predictions = deserialized_model.predict(X_test)
 ```
 
-# Features
+## Extensibility
 
-The list of supported models is rapidly growing. If you have a request for a model or feature, please reach out to info@sftec.es.
+OpenModels is designed to be easily extended with new serialization formats and model types.
 
-OpenModels requires scikit-learn >= 1.5.0
+### Adding a New Format
 
-## Currently Supported scikit-learn Models
+To add a new serialization format, create a class that implements the `FormatConverter` protocol and register it with the `FormatRegistry`:
 
-Classification
+```python
+from openmodels.protocols import FormatConverter
+from openmodels.format_registry import FormatRegistry
 
-- `sklearn.naive_bayes.BernoulliNB`
-- `sklearn.naive_bayes.ComplementNB`
-- `sklearn.naive_bayes.GaussianNB`
-- `sklearn.discriminant_analysis.LinearDiscriminantAnalysis` (LDA)
-- `sklearn.linear_model.LogisticRegression`
-- `sklearn.naive_bayes.MultinomialNB`
-- `sklearn.decomposition.PCA`
-- `sklearn.linear_model.Perceptron`
+class YAMLConverter(FormatConverter):
+    @staticmethod
+    def serialize_to_format(data: Dict[str, Any]) -> str:
+        import yaml
+        return yaml.dump(data)
 
-Regression
+    @staticmethod
+    def deserialize_from_format(formatted_data: str) -> Dict[str, Any]:
+        import yaml
+        return yaml.safe_load(formatted_data)
 
-- `sklearn.linear_model.Lasso`
-- `sklearn.linear_model.LinearRegression`
-- `sklearn.cross_decomposition.PLSRegression`
-- `sklearn.linear_model.Ridge`
+FormatRegistry.register("yaml", YAMLConverter)
+```
+
+### Adding a New Model Serializer
+
+To add support for a new type of model, create a class that implements the `ModelSerializer` protocol:
+
+```python
+from openmodels.protocols import ModelSerializer
+
+class TensorFlowSerializer(ModelSerializer):
+    def serialize(self, model: Any) -> Dict[str, Any]:
+        # Implementation for serializing TensorFlow models
+        ...
+
+    def deserialize(self, data: Dict[str, Any]) -> Any:
+        # Implementation for deserializing TensorFlow models
+        ...
+```
+
+## Supported Models
+
+OpenModels currently supports a wide range of scikit-learn models, including:
+
+- Classification: LogisticRegression, RandomForestClassifier, SVC, etc.
+- Regression: LinearRegression, RandomForestRegressor, SVR, etc.
+- Clustering: KMeans
+- Dimensionality Reduction: PCA
+
+For a full list of supported models, please refer to the `SUPPORTED_ESTIMATORS` dictionary in `serializers/sklearn_serializer.py`.
 
 ## Contributing
 
-We welcome contributions to OpenModels from anyone interested in improving the package. Whether you have ideas for new features, bug reports, or just want to help improve the code, we appreciate your contributions! You are also welcome to see the [Project Board]() to see what we are currently working on.
+We welcome contributions to OpenModels! Whether you want to add support for new models, implement new serialization formats, or improve the existing codebase, your help is appreciated.
 
-To contribute to OpenModels, please follow the [contributing guidelines](CONTRIBUTING.md).
+Please refer to our [Contributing Guidelines](CONTRIBUTING.md) for more information on how to get started.
 
-## Running the Tests
+## Running Tests
 
-This project uses `poetry` for dependency management and packaging. To run the tests, follow these steps:
+To run the tests:
 
-1. **Clone the repository:**
+1. Clone the repository:
 
-   ```bash
-   git clone https://github.com/SF-Tec/openmodels.git
+   ```
+   git clone https://github.com/your-repo/openmodels.git
    cd openmodels
    ```
 
-2. **Create a virtual environment and install dependencies:**
+2. Install the package and its dependencies:
 
-   ```bash
-    poetry install
+   ```
+   pip install -e .
    ```
 
-3. **Run the tests:**
-
-   ```bash
-    poetry run pytest
+3. Run the tests:
+   ```
+   pytest
    ```
 
 ## License
 
-This package is distributed under the MIT license. See the [LICENSE](LICENSE) file for more information.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

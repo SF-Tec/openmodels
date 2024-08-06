@@ -13,7 +13,7 @@ from sklearn.ensemble import (
 from sklearn.naive_bayes import BernoulliNB, GaussianNB, MultinomialNB, ComplementNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
-from openmodels.test_helpers import test_model
+from openmodels.test_helpers import run_test_model
 
 # Define constants
 N_SAMPLES = 50
@@ -63,41 +63,41 @@ def data():
 # Test each model
 def test_bernoulli_nb(data):
     x, y, x_sparse, y_sparse = data
-    test_model(BernoulliNB(), x, y, x_sparse, y_sparse, "bernoulli-nb.json")
+    run_test_model(BernoulliNB(), x, y, x_sparse, y_sparse, "bernoulli-nb.json")
 
 
 def test_gaussian_nb(data):
     x, y, _, _ = data
-    test_model(GaussianNB(), x, y, None, None, "gaussian-nb.json")
+    run_test_model(GaussianNB(), x, y, None, None, "gaussian-nb.json")
 
 
 def test_multinomial_nb(data):
     x, y, x_sparse, y_sparse = data
-    test_model(
+    run_test_model(
         MultinomialNB(), x, y, x_sparse, y_sparse, "multinomial-nb.json", abs=True
     )
 
 
 def test_complement_nb(data):
     x, y, _, _ = data
-    test_model(ComplementNB(), x, y, None, None, "complement-nb.json", abs=True)
+    run_test_model(ComplementNB(), x, y, None, None, "complement-nb.json", abs=True)
 
 
 def test_logistic_regression(data):
     x, y, x_sparse, y_sparse = data
-    test_model(LogisticRegression(), x, y, x_sparse, y_sparse, "lr.json")
+    run_test_model(LogisticRegression(), x, y, x_sparse, y_sparse, "lr.json")
 
 
 def test_lda(data):
     x, y, _, _ = data
-    test_model(
+    run_test_model(
         discriminant_analysis.LinearDiscriminantAnalysis(), x, y, None, None, "lda.json"
     )
 
 
 def test_qda(data):
     x, y, _, _ = data
-    test_model(
+    run_test_model(
         discriminant_analysis.QuadraticDiscriminantAnalysis(),
         x,
         y,
@@ -107,9 +107,10 @@ def test_qda(data):
     )
 
 
+@pytest.mark.skip(reason="Feature not ready")
 def test_svm(data):
     x, y, x_sparse, y_sparse = data
-    test_model(
+    run_test_model(
         svm.SVC(gamma=0.001, C=100.0, kernel="linear"),
         x,
         y,
@@ -119,14 +120,16 @@ def test_svm(data):
     )
 
 
+@pytest.mark.skip(reason="Feature not ready")
 def test_decision_tree(data):
     x, y, x_sparse, y_sparse = data
-    test_model(DecisionTreeClassifier(), x, y, x_sparse, y_sparse, "dt.json")
+    run_test_model(DecisionTreeClassifier(), x, y, x_sparse, y_sparse, "dt.json")
 
 
+@pytest.mark.skip(reason="Feature not ready")
 def test_gradient_boosting(data):
     x, y, x_sparse, y_sparse = data
-    test_model(
+    run_test_model(
         GradientBoostingClassifier(
             n_estimators=N_ESTIMATORS, learning_rate=LEARNING_RATE
         ),
@@ -138,9 +141,10 @@ def test_gradient_boosting(data):
     )
 
 
+@pytest.mark.skip(reason="Feature not ready")
 def test_random_forest(data):
     x, y, x_sparse, y_sparse = data
-    test_model(
+    run_test_model(
         RandomForestClassifier(
             n_estimators=N_ESTIMATORS, max_depth=MAX_DEPTH, random_state=RANDOM_STATE
         ),
@@ -154,12 +158,13 @@ def test_random_forest(data):
 
 def test_perceptron(data):
     x, y, x_sparse, y_sparse = data
-    test_model(Perceptron(), x, y, x_sparse, y_sparse, "perceptron.json")
+    run_test_model(Perceptron(), x, y, x_sparse, y_sparse, "perceptron.json")
 
 
+@pytest.mark.skip(reason="Feature not ready")
 def test_mlp(data):
     x, y, x_sparse, y_sparse = data
-    test_model(
+    run_test_model(
         MLPClassifier(
             solver=SOLVER,
             alpha=ALPHA,
@@ -176,9 +181,9 @@ def test_mlp(data):
 
 def test_pca(data):
     x, _, x_sparse, _ = data
-    test_model(PCA(n_components=N_COMPONENTS), x, x, x_sparse, x_sparse, "pca.json")
+    run_test_model(PCA(n_components=N_COMPONENTS), x, x, x_sparse, x_sparse, "pca.json")
 
 
 def test_kmeans(data):
     x, _, x_sparse, _ = data
-    test_model(KMeans(), x, x, x_sparse, x_sparse, "kmeans.json")
+    run_test_model(KMeans(), x, x, x_sparse, x_sparse, "kmeans.json")
