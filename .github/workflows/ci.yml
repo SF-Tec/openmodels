@@ -30,12 +30,21 @@ jobs:
         run: poetry run pytest
 
       - name: Run type checking
-        run: poetry run mypy openmodels
+        run: |
+          poetry run mypy openmodels
+          echo "mypy exit code: $?"
 
       - name: Run linting
         run: |
           poetry run black --check openmodels
           poetry run flake8 openmodels
+
+      - name: Check for leftover debug print statements
+        run: |
+          if grep -r "print(" openmodels; then
+            echo "Warning: Found print statements in the code. Please remove them before merging."
+            exit 1
+          fi
 
   build:
     needs: test
