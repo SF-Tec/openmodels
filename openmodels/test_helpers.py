@@ -34,7 +34,9 @@ ModelType = Union[PredictorModel, TransformerModel, FittableModel]
 T = TypeVar("T", bound=Union[BaseEstimator, ModelType])
 
 
-def fit_model(model: T, x: np.ndarray, y: np.ndarray, abs: bool = False) -> T:
+def fit_model(
+    model: FittableModel, x: np.ndarray, y: np.ndarray, abs: bool = False
+) -> FittableModel:
     """
     Fits a model to the provided data.
 
@@ -117,7 +119,7 @@ def run_test_transformed_data(
 
 
 def run_test_model(
-    model: Union[BaseEstimator, ModelType],
+    model: FittableModel,
     x: np.ndarray,
     y: np.ndarray,
     x_sparse: Optional[np.ndarray],
