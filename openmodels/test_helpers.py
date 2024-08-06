@@ -64,7 +64,7 @@ def fit_model(model: T, x: np.ndarray, y: np.ndarray, abs: bool = False) -> T:
     return model
 
 
-def test_predictions(
+def run_test_predictions(
     model1: PredictorModel, model2: PredictorModel, x: np.ndarray
 ) -> None:
     """
@@ -89,7 +89,7 @@ def test_predictions(
     testing.assert_array_equal(expected_predictions, actual_predictions)
 
 
-def test_transformed_data(
+def run_test_transformed_data(
     model1: TransformerModel, model2: TransformerModel, x: np.ndarray
 ) -> None:
     """
@@ -159,13 +159,13 @@ def run_test_model(
 
     # Test the deserialized model
     if isinstance(model, PredictorModel):
-        test_predictions(
+        run_test_predictions(
             cast(PredictorModel, fitted_model),
             cast(PredictorModel, deserialized_model),
             x,
         )
     elif isinstance(model, TransformerModel):
-        test_transformed_data(
+        run_test_transformed_data(
             cast(TransformerModel, fitted_model),
             cast(TransformerModel, deserialized_model),
             x,
@@ -189,13 +189,13 @@ def run_test_model(
 
     # Test the deserialized model from file
     if isinstance(model, PredictorModel):
-        test_predictions(
+        run_test_predictions(
             cast(PredictorModel, fitted_model),
             cast(PredictorModel, deserialized_model_from_file),
             x,
         )
     elif isinstance(model, TransformerModel):
-        test_transformed_data(
+        run_test_transformed_data(
             cast(TransformerModel, fitted_model),
             cast(TransformerModel, deserialized_model_from_file),
             x,
