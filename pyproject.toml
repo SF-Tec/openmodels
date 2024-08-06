@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openmodels"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 description = "Export scikit-learn model files to JSON for sharing or deploying predictive models with peace of mind."
 authors = [
     "Alejandro Gutierrez <agutierrez@sftec.es>, Pau Cabaneros <pau.cabaneros@gmail.com>, Raúl Marín <hi@raulmarin.dev>, Ruben Parrilla <rparrilla@sftec.es>",
@@ -18,13 +18,11 @@ mypy = "^1.10.0"
 pytest = "^8.2.2"
 pre-commit = "^3.7.1"
 black = "^24.4.2"
+flake8 = "^7.1.1"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.mypy]
-plugins = ["mypy_extras.plugin"]
 
 [[tool.mypy.overrides]]
 module = ["sklearn", "sklearn.*"]

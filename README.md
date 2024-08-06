@@ -1,5 +1,9 @@
 # OpenModels
 
+[![PyPI version](https://badge.fury.io/py/openmodels.svg)](https://badge.fury.io/py/openmodels)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Versions](https://img.shields.io/pypi/pyversions/openmodels.svg)](https://pypi.org/project/openmodels/)
+
 OpenModels is a flexible and extensible library for serializing and deserializing machine learning models. It's designed to support any serialization format through a plugin-based architecture, providing a safe and transparent solution for exporting and sharing predictive models.
 
 ## Key Features
@@ -11,7 +15,7 @@ OpenModels is a flexible and extensible library for serializing and deserializin
 
 ## Installation
 
-```
+```bash
 pip install openmodels
 ```
 
@@ -19,13 +23,11 @@ pip install openmodels
 
 ```python
 from openmodels import SerializationManager, SklearnSerializer
-from openmodels.converters import JSONConverter
 from sklearn.ensemble import RandomForestClassifier
-
-# Register the JSON converter (this is done automatically in __init__.py)
-# FormatRegistry.register("json", JSONConverter)
+from sklearn.datasets import make_classification
 
 # Create and train a scikit-learn model
+X, y = make_classification(n_samples=1000, n_features=4, n_informative=2, n_redundant=0, random_state=0, shuffle=False)
 model = RandomForestClassifier(n_estimators=10, max_depth=5, random_state=0)
 model.fit(X, y)
 
@@ -39,7 +41,8 @@ serialized_model = manager.serialize(model)
 deserialized_model = manager.deserialize(serialized_model)
 
 # Use the deserialized model
-predictions = deserialized_model.predict(X_test)
+predictions = deserialized_model.predict(X[:5])
+print(predictions)
 ```
 
 ## Extensibility
@@ -53,6 +56,7 @@ To add a new serialization format, create a class that implements the `FormatCon
 ```python
 from openmodels.protocols import FormatConverter
 from openmodels.format_registry import FormatRegistry
+from typing import Dict, Any
 
 class YAMLConverter(FormatConverter):
     @staticmethod
@@ -74,6 +78,7 @@ To add support for a new type of model, create a class that implements the `Mode
 
 ```python
 from openmodels.protocols import ModelSerializer
+from typing import Any, Dict
 
 class TensorFlowSerializer(ModelSerializer):
     def serialize(self, model: Any) -> Dict[str, Any]:
@@ -108,22 +113,32 @@ To run the tests:
 
 1. Clone the repository:
 
-   ```
+   ```bash
    git clone https://github.com/your-repo/openmodels.git
    cd openmodels
    ```
 
 2. Install the package and its dependencies:
 
-   ```
+   ```bash
    pip install -e .
    ```
 
 3. Run the tests:
-   ```
+   ```bash
    pytest
    ```
 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+For a detailed changelog, please see the [CHANGELOG.md](CHANGELOG.md) file.
+
+## Support
+
+If you encounter any issues or have questions, please [file an issue](https://github.com/SF-Tec/openmodels) on our GitHub repository.
+
+We're always looking to improve OpenModels. If you have any suggestions or feature requests, please let us know!
