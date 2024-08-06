@@ -23,9 +23,6 @@ black = "^24.4.2"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.mypy]
-plugins = ["mypy_extras.plugin"]
-
 [[tool.mypy.overrides]]
 module = ["sklearn", "sklearn.*"]
 ignore_missing_imports = true
