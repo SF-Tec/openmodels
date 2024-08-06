@@ -14,20 +14,17 @@ from openmodels import SerializationManager, SklearnSerializer
 
 @runtime_checkable
 class PredictorModel(Protocol):
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        ...
+    def predict(self, X: np.ndarray) -> np.ndarray: ...
 
 
 @runtime_checkable
 class TransformerModel(Protocol):
-    def transform(self, X: np.ndarray) -> np.ndarray:
-        ...
+    def transform(self, X: np.ndarray) -> np.ndarray: ...
 
 
 @runtime_checkable
 class FittableModel(Protocol):
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "FittableModel":
-        ...
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "FittableModel": ...
 
 
 ModelType = Union[PredictorModel, TransformerModel, FittableModel]

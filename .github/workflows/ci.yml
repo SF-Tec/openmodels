@@ -30,9 +30,12 @@ jobs:
         run: poetry run pytest
 
       - name: Run type checking
+        run: poetry run mypy openmodels
+
+      - name: Run formatting
         run: |
-          poetry run mypy openmodels
-          echo "mypy exit code: $?"
+          poetry run black openmodels
+          git diff --exit-code
 
       - name: Run linting
         run: |
