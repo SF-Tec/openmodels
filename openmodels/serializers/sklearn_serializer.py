@@ -33,7 +33,8 @@ from sklearn.discriminant_analysis import (
     QuadraticDiscriminantAnalysis,
 )
 from sklearn.dummy import DummyClassifier
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+
+# from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.exceptions import NotFittedError
 
@@ -44,13 +45,13 @@ from openmodels.protocols import ModelSerializer
 SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "BernoulliNB": BernoulliNB,
     "ComplementNB": ComplementNB,
+    "GaussianNB": GaussianNB,
     # "DecisionTreeClassifier": DecisionTreeClassifier, # tree_ instance
     # "DecisionTreeRegressor": DecisionTreeRegressor, # tree_ instance
     "DummyClassifier": DummyClassifier,
-    "GaussianNB": GaussianNB,
-    "GradientBoostingClassifier": GradientBoostingClassifier,
-    "GradientBoostingRegressor": GradientBoostingRegressor,
-    "Lasso": Lasso,
+    # "GradientBoostingClassifier": GradientBoostingClassifier,# contains stimators_ attribut with DecisionTreeRegressor
+    # "GradientBoostingRegressor": GradientBoostingRegressor,# contains stimators_ attribut with DecisionTreeRegressor
+    # "Lasso": Lasso,# needs to convert crs_matrix to serializable type
     "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis,
     "LinearRegression": LinearRegression,
     "LogisticRegression": LogisticRegression,
@@ -77,19 +78,19 @@ ATRIBUTE_EXCEPTIONS: Dict[str, list] = {
     # "DecisionTreeRegressor": [], # not suppoted
     "DummyClassifier": ["_strategy"],
     "GaussianNB": [],
-    "GradientBoostingClassifier": [],
+    # "GradientBoostingClassifier": [], # not supported
     "GradientBoostingRegressor": [],
     "Lasso": [],
     "LinearDiscriminantAnalysis": [],
     "LinearRegression": [],
     "LogisticRegression": [],
-    "KMeans": [],
+    "KMeans": ["_n_threads"],
     "MLPClassifier": [],
     "MLPRegressor": [],
     "MultinomialNB": [],
     "PCA": [],
     "Perceptron": [],
-    "PLSRegression": [],
+    "PLSRegression": ["_x_mean", "_predict_1d"],
     "QuadraticDiscriminantAnalysis": [],
     "RandomForestClassifier": [],
     "RandomForestRegressor": [],
