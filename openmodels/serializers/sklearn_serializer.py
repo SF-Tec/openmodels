@@ -44,8 +44,8 @@ from openmodels.protocols import ModelSerializer
 SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "BernoulliNB": BernoulliNB,
     "ComplementNB": ComplementNB,
-    "DecisionTreeClassifier": DecisionTreeClassifier,
-    "DecisionTreeRegressor": DecisionTreeRegressor,
+    # "DecisionTreeClassifier": DecisionTreeClassifier, # tree_ instance
+    # "DecisionTreeRegressor": DecisionTreeRegressor, # tree_ instance
     "DummyClassifier": DummyClassifier,
     "GaussianNB": GaussianNB,
     "GradientBoostingClassifier": GradientBoostingClassifier,
@@ -67,6 +67,35 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "Ridge": Ridge,
     "SVC": SVC,
     "SVR": SVR,
+}
+
+# Dictionary of attribute exceptions
+ATRIBUTE_EXCEPTIONS: Dict[str, list] = {
+    "BernoulliNB": [],
+    "ComplementNB": [],
+    # "DecisionTreeClassifier": [], # not suppoted
+    # "DecisionTreeRegressor": [], # not suppoted
+    "DummyClassifier": ["_strategy"],
+    "GaussianNB": [],
+    "GradientBoostingClassifier": [],
+    "GradientBoostingRegressor": [],
+    "Lasso": [],
+    "LinearDiscriminantAnalysis": [],
+    "LinearRegression": [],
+    "LogisticRegression": [],
+    "KMeans": [],
+    "MLPClassifier": [],
+    "MLPRegressor": [],
+    "MultinomialNB": [],
+    "PCA": [],
+    "Perceptron": [],
+    "PLSRegression": [],
+    "QuadraticDiscriminantAnalysis": [],
+    "RandomForestClassifier": [],
+    "RandomForestRegressor": [],
+    "Ridge": [],
+    "SVC": [],
+    "SVR": [],
 }
 
 # List of supported types for serialization
@@ -203,15 +232,16 @@ class SklearnSerializer(ModelSerializer):
             for key in dir(model)
             if not callable(getattr(model, key))
             and not key.endswith("__")
-            and type(getattr(model, key)) in SUPPORTED_TYPES
-            and (
-                not isinstance(getattr(type(model), key, None), property)
-                or getattr(type(model), key).fset is not None
-            )
+            and key.endswith("_")
+            and not key.endswith("__")
         ]
 
+        # Add atribute exceptions
+        filtered_attribute_keys = (
+            filtered_attribute_keys + ATRIBUTE_EXCEPTIONS[model.__class__.__name__]
+        )
+
         attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
-        attribute_types = [type(value) for value in attribute_values]
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
@@ -220,7 +250,6 @@ class SklearnSerializer(ModelSerializer):
             "attributes": dict(
                 zip(filtered_attribute_keys, serializable_attribute_values)
             ),
-            "attribute_types": [str(attr_type) for attr_type in attribute_types],
             "estimator_class": model.__class__.__name__,
             "params": model.get_params(),
             "producer_name": model.__module__.split(".")[0],
