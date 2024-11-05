@@ -51,8 +51,8 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     # "DecisionTreeClassifier": DecisionTreeClassifier, # tree_ instance
     # "DecisionTreeRegressor": DecisionTreeRegressor, # tree_ instance
     "DummyClassifier": DummyClassifier,
-    # "GradientBoostingClassifier": GradientBoostingClassifier,# contains stimators_ attribut with DecisionTreeRegressor
-    # "GradientBoostingRegressor": GradientBoostingRegressor,# contains stimators_ attribut with DecisionTreeRegressor
+    # "GradientBoostingClassifier": GradientBoostingClassifier,# contains stimators_ attribute with DecisionTreeRegressor
+    # "GradientBoostingRegressor": GradientBoostingRegressor,# contains stimators_ attribute with DecisionTreeRegressor
     # "Lasso": Lasso,# needs to convert crs_matrix to serializable type
     "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis,
     "LinearRegression": LinearRegression,
@@ -65,8 +65,8 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     # "Perceptron": Perceptron, # contains loss_function_ attribut with Hinge type
     "PLSRegression": PLSRegression,
     "QuadraticDiscriminantAnalysis": QuadraticDiscriminantAnalysis,
-    # "RandomForestClassifier": RandomForestClassifier, # contains stimators_ attribut with DecisionTreeRegressor
-    # "RandomForestRegressor": RandomForestRegressor, # contains stimators_ attribut with DecisionTreeRegressor
+    # "RandomForestClassifier": RandomForestClassifier, # contains stimators_ attribute with DecisionTreeRegressor
+    # "RandomForestRegressor": RandomForestRegressor, # contains stimators_ attribute with DecisionTreeRegressor
     "Ridge": Ridge,
     "SVC": SVC,
     "SVR": SVR,
