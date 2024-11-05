@@ -56,18 +56,18 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "LinearRegression": LinearRegression,
     "LogisticRegression": LogisticRegression,
     "KMeans": KMeans,
-    "MLPClassifier": MLPClassifier,
-    "MLPRegressor": MLPRegressor,
+    # "MLPClassifier": MLPClassifier, # inhomogeneous shape list can't be converted in ndarray (we should save initial types for better _convert_to_sklearn_types funtion)
+    # "MLPRegressor": MLPRegressor, # inhomogeneous shape list can't be converted in ndarray (we should save initial types for better _convert_to_sklearn_types funtion)
     "MultinomialNB": MultinomialNB,
     "PCA": PCA,
-    "Perceptron": Perceptron,
+    # "Perceptron": Perceptron, # contains loss_function_ attribut with Hinge type
     "PLSRegression": PLSRegression,
     "QuadraticDiscriminantAnalysis": QuadraticDiscriminantAnalysis,
-    "RandomForestClassifier": RandomForestClassifier,
-    "RandomForestRegressor": RandomForestRegressor,
+    # "RandomForestClassifier": RandomForestClassifier, # contains stimators_ attribut with DecisionTreeRegressor
+    # "RandomForestRegressor": RandomForestRegressor, # contains stimators_ attribut with DecisionTreeRegressor
     "Ridge": Ridge,
-    "SVC": SVC,
-    "SVR": SVR,
+    # "SVC": SVC, # keys not defined or available depending on params
+    # "SVR": SVR, # keys not defined or available depending on params
 }
 
 # Dictionary of attribute exceptions
@@ -80,23 +80,23 @@ ATRIBUTE_EXCEPTIONS: Dict[str, list] = {
     "GaussianNB": [],
     # "GradientBoostingClassifier": [], # not supported
     "GradientBoostingRegressor": [],
-    "Lasso": [],
+    # "Lasso": [], # not supported
     "LinearDiscriminantAnalysis": [],
     "LinearRegression": [],
     "LogisticRegression": [],
     "KMeans": ["_n_threads"],
-    "MLPClassifier": [],
-    "MLPRegressor": [],
+    # "MLPClassifier": [], # not supported
+    # "MLPRegressor": [], # not supported
     "MultinomialNB": [],
     "PCA": [],
-    "Perceptron": [],
+    # "Perceptron": [], # not supported
     "PLSRegression": ["_x_mean", "_predict_1d"],
     "QuadraticDiscriminantAnalysis": [],
-    "RandomForestClassifier": [],
-    "RandomForestRegressor": [],
+    # "RandomForestClassifier": [], # not supported
+    # "RandomForestRegressor": [], # not supported
     "Ridge": [],
-    "SVC": [],
-    "SVR": [],
+    # "SVC": [], # not supported
+    # "SVR": [], # not supported
 }
 
 # List of supported types for serialization
