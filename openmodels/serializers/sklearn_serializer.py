@@ -21,7 +21,7 @@ from sklearn.cross_decomposition import PLSRegression
 #    GradientBoostingRegressor,
 # )
 
-# from sklearn.svm import SVR, SVC
+from sklearn.svm import SVR, SVC
 from sklearn.linear_model import (
     LogisticRegression,
     # Lasso,
@@ -68,8 +68,8 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     # "RandomForestClassifier": RandomForestClassifier, # contains stimators_ attribut with DecisionTreeRegressor
     # "RandomForestRegressor": RandomForestRegressor, # contains stimators_ attribut with DecisionTreeRegressor
     "Ridge": Ridge,
-    # "SVC": SVC, # keys not defined or available depending on params
-    # "SVR": SVR, # keys not defined or available depending on params
+    "SVC": SVC,
+    "SVR": SVR,
 }
 
 # Dictionary of attribute exceptions
@@ -97,8 +97,24 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
     # "RandomForestClassifier": [], # not supported
     # "RandomForestRegressor": [], # not supported
     "Ridge": [],
-    # "SVC": [], # not supported
-    # "SVR": [], # not supported
+    "SVC": [
+        "_sparse",
+        "_n_support",
+        "_dual_coef_",
+        "_intercept_",
+        "_probA",
+        "_probB",
+        "_gamma",
+    ],
+    "SVR": [
+        "_sparse",
+        "_n_support",
+        "_dual_coef_",
+        "_intercept_",
+        "_probA",
+        "_probB",
+        "_gamma",
+    ],
 }
 
 # List of supported types for serialization
@@ -233,10 +249,10 @@ class SklearnSerializer(ModelSerializer):
         filtered_attribute_keys = [
             key
             for key in dir(model)
-            if not callable(getattr(model, key))
-            and not key.endswith("__")
+            if not key.endswith("__")
             and key.endswith("_")
             and not key.endswith("__")
+            and not isinstance(getattr(type(model), key, None), property)
         ]
 
         # Add atribute exceptions
