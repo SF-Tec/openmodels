@@ -241,7 +241,7 @@ class SklearnSerializer(ModelSerializer):
 
         # Add atribute exceptions
         filtered_attribute_keys = (
-            filtered_attribute_keys + ATRIBUTE_EXCEPTIONS[model.__class__.__name__]
+            filtered_attribute_keys + ATTRIBUTE_EXCEPTIONS[model.__class__.__name__]
         )
 
         attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
