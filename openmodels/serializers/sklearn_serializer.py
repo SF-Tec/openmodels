@@ -13,19 +13,21 @@ from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
-from sklearn.ensemble import (
-    RandomForestRegressor,
-    RandomForestClassifier,
-    GradientBoostingClassifier,
-    GradientBoostingRegressor,
-)
-from sklearn.svm import SVR, SVC
+
+# from sklearn.ensemble import (
+#    RandomForestRegressor,
+#    RandomForestClassifier,
+#    GradientBoostingClassifier,
+#    GradientBoostingRegressor,
+# )
+
+# from sklearn.svm import SVR, SVC
 from sklearn.linear_model import (
     LogisticRegression,
-    Lasso,
+    # Lasso,
     Ridge,
     LinearRegression,
-    Perceptron,
+    # Perceptron,
 )
 from sklearn.naive_bayes import BernoulliNB, GaussianNB, MultinomialNB, ComplementNB
 from sklearn.discriminant_analysis import (
@@ -35,7 +37,7 @@ from sklearn.discriminant_analysis import (
 from sklearn.dummy import DummyClassifier
 
 # from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.neural_network import MLPClassifier, MLPRegressor
+# from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.exceptions import NotFittedError
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
