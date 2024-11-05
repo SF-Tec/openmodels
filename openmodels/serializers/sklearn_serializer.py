@@ -71,7 +71,7 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
 }
 
 # Dictionary of attribute exceptions
-ATRIBUTE_EXCEPTIONS: Dict[str, list] = {
+ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
     "BernoulliNB": [],
     "ComplementNB": [],
     # "DecisionTreeClassifier": [], # not suppoted
