@@ -24,7 +24,7 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.svm import SVR, SVC
 from sklearn.linear_model import (
     LogisticRegression,
-    # Lasso,
+    Lasso,
     Ridge,
     LinearRegression,
     # Perceptron,
@@ -53,7 +53,7 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "DummyClassifier": DummyClassifier,
     # "GradientBoostingClassifier": GradientBoostingClassifier,# contains stimators_ attribute with DecisionTreeRegressor
     # "GradientBoostingRegressor": GradientBoostingRegressor,# contains stimators_ attribute with DecisionTreeRegressor
-    # "Lasso": Lasso,# needs to convert crs_matrix to serializable type
+    "Lasso": Lasso,
     "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis,
     "LinearRegression": LinearRegression,
     "LogisticRegression": LogisticRegression,
@@ -82,7 +82,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
     "GaussianNB": [],
     # "GradientBoostingClassifier": [], # not supported
     "GradientBoostingRegressor": [],
-    # "Lasso": [], # not supported
+    "Lasso": [],
     "LinearDiscriminantAnalysis": [],
     "LinearRegression": [],
     "LogisticRegression": [],
@@ -183,7 +183,9 @@ class SklearnSerializer(ModelSerializer):
             The scikit-learn type of the value.
         """
         if isinstance(value, list):
-            return np.array(value)
+            return np.array(
+                [SklearnSerializer._convert_to_sklearn_types(item) for item in value]
+            )
         return value
 
     @staticmethod
