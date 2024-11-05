@@ -253,6 +253,7 @@ class SklearnSerializer(ModelSerializer):
             and key.endswith("_")
             and not key.endswith("__")
             and not isinstance(getattr(type(model), key, None), property)
+            and not callable(getattr(model, key))
         ]
 
         # Add atribute exceptions
