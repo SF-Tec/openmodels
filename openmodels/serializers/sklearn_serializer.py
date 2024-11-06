@@ -7,6 +7,7 @@ converted to and from dictionary representations.
 
 from typing import Any, Dict, List, Type
 import numpy as np
+from scipy.sparse import _csr, csr_matrix
 
 import sklearn
 from sklearn.base import BaseEstimator, check_is_fitted
@@ -165,10 +166,20 @@ class SklearnSerializer(ModelSerializer):
         """
         if isinstance(value, (np.ndarray, list)):
             return SklearnSerializer._array_to_list(value)
+        if isinstance(value, _csr.csr_matrix):
+            csr_value = csr_matrix(value)
+            serialized_sparse_matrix = {
+                "data": SklearnSerializer._array_to_list(csr_value.data),
+                "indptr": SklearnSerializer._array_to_list(csr_value.indptr),
+                "indices": SklearnSerializer._array_to_list(csr_value.indices),
+                "shape": SklearnSerializer._array_to_list(csr_value.shape),
+            }
+            return serialized_sparse_matrix
+
         return value
 
     @staticmethod
-    def _convert_to_sklearn_types(value: Any) -> Any:
+    def _convert_to_sklearn_types(value: Any, attr_type: str = "none") -> Any:
         """
         Convert a JSON-deserialized value to its scikit-learn type.
 
@@ -182,7 +193,14 @@ class SklearnSerializer(ModelSerializer):
         Any
             The scikit-learn type of the value.
         """
-        if isinstance(value, list):
+
+        if attr_type == "csr_matrix":
+            return csr_matrix(
+                (value["data"], value["indices"], value["indptr"]), shape=value["shape"]
+            )
+        elif attr_type == "ndarray":
+            return np.array(value)
+        elif isinstance(value, list):
             return np.array(
                 [SklearnSerializer._convert_to_sklearn_types(item) for item in value]
             )
@@ -251,7 +269,7 @@ class SklearnSerializer(ModelSerializer):
         filtered_attribute_keys = [
             key
             for key in dir(model)
-            if not key.endswith("__")
+            if not key.startswith("__")
             and key.endswith("_")
             and not key.endswith("__")
             and not isinstance(getattr(type(model), key, None), property)
@@ -264,14 +282,23 @@ class SklearnSerializer(ModelSerializer):
         )
 
         attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
+
+        attribute_types = [
+            type(attribute_value).__name__ for attribute_value in attribute_values
+        ]
+
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
+
+        # print("attributes", filtered_attribute_keys)
+        # print("tipos", attribute_types)
 
         return {
             "attributes": dict(
                 zip(filtered_attribute_keys, serializable_attribute_values)
             ),
+            "attribute_types": dict(zip(filtered_attribute_keys, attribute_types)),
             "estimator_class": model.__class__.__name__,
             "params": model.get_params(),
             "producer_name": model.__module__.split(".")[0],
@@ -315,6 +342,9 @@ class SklearnSerializer(ModelSerializer):
         model = SUPPORTED_ESTIMATORS[estimator_class](**data["params"])
 
         for attribute, value in data["attributes"].items():
-            setattr(model, attribute, self._convert_to_sklearn_types(value))
+            # Retrieve the attribute type from data["attribute_types"]
+            attr_type = data["attribute_types"].get(attribute)
+            # Pass both value and attr_type to _convert_to_sklearn_types
+            setattr(model, attribute, self._convert_to_sklearn_types(value, attr_type))
 
         return model
