@@ -38,7 +38,7 @@ from sklearn.discriminant_analysis import (
 from sklearn.dummy import DummyClassifier
 
 # from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-# from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.exceptions import NotFittedError
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
@@ -59,8 +59,8 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "LinearRegression": LinearRegression,
     "LogisticRegression": LogisticRegression,
     "KMeans": KMeans,
-    # "MLPClassifier": MLPClassifier, # inhomogeneous shape list can't be converted in ndarray (we should save initial types for better _convert_to_sklearn_types funtion)
-    # "MLPRegressor": MLPRegressor, # inhomogeneous shape list can't be converted in ndarray (we should save initial types for better _convert_to_sklearn_types funtion)
+    # "MLPClassifier": MLPClassifier,  # needs _label_binarizer attribute with LabelBinarizer type
+    "MLPRegressor": MLPRegressor,
     "MultinomialNB": MultinomialNB,
     "PCA": PCA,
     # "Perceptron": Perceptron, # contains loss_function_ attribut with Hinge type
@@ -88,8 +88,8 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
     "LinearRegression": [],
     "LogisticRegression": [],
     "KMeans": ["_n_threads"],
-    # "MLPClassifier": [], # not supported
-    # "MLPRegressor": [], # not supported
+    # "MLPClassifier": ["_label_binarizer"],  # not supported
+    "MLPRegressor": [],  # not supported
     "MultinomialNB": [],
     "PCA": [],
     # "Perceptron": [], # not supported
@@ -194,16 +194,31 @@ class SklearnSerializer(ModelSerializer):
             The scikit-learn type of the value.
         """
 
-        if attr_type == "csr_matrix":
-            return csr_matrix(
-                (value["data"], value["indices"], value["indptr"]), shape=value["shape"]
-            )
-        elif attr_type == "ndarray":
-            return np.array(value)
-        elif isinstance(value, list):
-            return np.array(
-                [SklearnSerializer._convert_to_sklearn_types(item) for item in value]
-            )
+        # Base case: if attr_type is not a list, convert value based on attr_type
+        if isinstance(attr_type, str):
+            if attr_type == "csr_matrix":
+                return csr_matrix(
+                    (value["data"], value["indices"], value["indptr"]),
+                    shape=value["shape"],
+                )
+            elif attr_type == "ndarray":
+                return np.array(value)
+            elif attr_type == "int":
+                return int(value)
+            elif attr_type == "float":
+                return float(value)
+            elif attr_type == "str":
+                return str(value)
+            # Add other types as needed
+            return value  # Return as-is if no specific conversion is needed
+
+        # Recursive case: if attr_type is a list, process each element in value
+        elif isinstance(attr_type, list) and isinstance(value, list):
+            return [
+                SklearnSerializer._convert_to_sklearn_types(v, t)
+                for v, t in zip(value, attr_type)
+            ]
+
         return value
 
     @staticmethod
@@ -229,6 +244,27 @@ class SklearnSerializer(ModelSerializer):
             return tuple(SklearnSerializer._array_to_list(item) for item in array)
         else:
             return array
+
+    @staticmethod
+    def get_nested_types(item: Any) -> Any:
+        """
+        Recursively determine the type of elements within nested lists.
+
+        Parameters
+        ----------
+        item : Any
+            The item to inspect for nested types.
+
+        Returns
+        -------
+        Any
+            A nested list representing the types of elements in the input item.
+        """
+        if isinstance(item, list) and item:  # If it's a list and not empty
+            return [SklearnSerializer.get_nested_types(subitem) for subitem in item]
+        else:
+            # Return the type name if it's not a list or it's an empty list
+            return type(item).__name__
 
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
@@ -283,16 +319,21 @@ class SklearnSerializer(ModelSerializer):
 
         attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
 
+        # attribute_types = [
+        #  type(attribute_value).__name__ for attribute_value in attribute_values
+        # ]
+
+        # Generate attribute types with nested structure
         attribute_types = [
-            type(attribute_value).__name__ for attribute_value in attribute_values
+            SklearnSerializer.get_nested_types(value) for value in attribute_values
         ]
 
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
-        # print("attributes", filtered_attribute_keys)
-        # print("tipos", attribute_types)
+        print("attributes", filtered_attribute_keys)
+        print("tipos", attribute_types)
 
         return {
             "attributes": dict(

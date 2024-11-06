@@ -101,7 +101,6 @@ def test_random_forest_regression(data):
     )
 
 
-@pytest.mark.skip(reason="Feature not ready")
 def test_mlp_regression(data):
     x, y, x_sparse, y_sparse = data
     run_test_model(MLPRegressor(), x, y, x_sparse, y_sparse, "mlp-regression.json")
