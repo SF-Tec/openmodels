@@ -259,6 +259,12 @@ class SklearnSerializer(ModelSerializer):
         -------
         Any
             A nested list representing the types of elements in the input item.
+
+        Examples
+        ---------
+
+        [1, [1, 2, [1, 2, 3]], 2] -> ['int',['int','int','ndarray'],'int']
+
         """
         if isinstance(item, list) and item:  # If it's a list and not empty
             return [SklearnSerializer.get_nested_types(subitem) for subitem in item]
@@ -331,9 +337,6 @@ class SklearnSerializer(ModelSerializer):
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
-
-        print("attributes", filtered_attribute_keys)
-        print("tipos", attribute_types)
 
         return {
             "attributes": dict(
