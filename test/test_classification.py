@@ -55,7 +55,7 @@ def data():
             }
         )
     y_sparse = [random.randint(0, 2) for i in range(0, 100)]
-    x_sparse = feature_hasher.transform(features)
+    x_sparse = feature_hasher.transform(iter(features))
 
     return x, y, x_sparse, y_sparse
 

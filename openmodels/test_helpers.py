@@ -8,18 +8,19 @@ from typing import Optional, Union, Protocol, runtime_checkable, TypeVar, cast
 import numpy as np
 from numpy import testing
 from sklearn.base import BaseEstimator
+from scipy.sparse import csr_matrix  # type: ignore
 
 from openmodels import SerializationManager, SklearnSerializer
 
 
 @runtime_checkable
 class PredictorModel(Protocol):
-    def predict(self, X: np.ndarray) -> np.ndarray: ...
+    def predict(self, X: Union[np.ndarray, csr_matrix]) -> np.ndarray: ...
 
 
 @runtime_checkable
 class TransformerModel(Protocol):
-    def transform(self, X: np.ndarray) -> np.ndarray: ...
+    def transform(self, X: Union[np.ndarray, csr_matrix]) -> np.ndarray: ...
 
 
 @runtime_checkable
@@ -29,6 +30,24 @@ class FittableModel(Protocol):
 
 ModelType = Union[PredictorModel, TransformerModel, FittableModel]
 T = TypeVar("T", bound=Union[BaseEstimator, ModelType])
+
+
+def ensure_correct_sparse_format(
+    x: Union[np.ndarray, csr_matrix]
+) -> Union[np.ndarray, csr_matrix]:
+    """
+    Ensure the input data is in the correct format for SVM models.
+    """
+    if isinstance(x, csr_matrix):
+        return csr_matrix(
+            (
+                x.data.astype(np.float64),
+                x.indices.astype(np.int32),
+                x.indptr.astype(np.int32),
+            ),
+            shape=x.shape,
+        )
+    return x
 
 
 def fit_model(
@@ -64,28 +83,33 @@ def fit_model(
 
 
 def run_test_predictions(
-    model1: PredictorModel, model2: PredictorModel, x: np.ndarray
+    model1: Union[PredictorModel, TransformerModel],
+    model2: Union[PredictorModel, TransformerModel],
+    x: Union[np.ndarray, csr_matrix],
+    abs: bool = False,
 ) -> None:
     """
-    Compares the predictions of two models on the given data.
-
-    Parameters
-    ----------
-    model1 : PredictorModel
-        The first scikit-learn model with a predict method.
-    model2 : PredictorModel
-        The second scikit-learn model with a predict method.
-    x : np.ndarray
-        The input samples.
-
-    Raises
-    ------
-    AssertionError
-        If the predictions of the two models are not equal.
+    Test if two models produce the same predictions.
     """
-    expected_predictions = model1.predict(x)
-    actual_predictions = model2.predict(x)
-    testing.assert_array_equal(expected_predictions, actual_predictions)
+    # Ensure input data is in correct format
+    x = ensure_correct_sparse_format(x)
+
+    if isinstance(model1, PredictorModel) and isinstance(model2, PredictorModel):
+        if abs:
+            actual_predictions = model1.predict(np.absolute(x))  # type: ignore
+            expected_predictions = model2.predict(np.absolute(x))  # type: ignore
+        else:
+            actual_predictions = model1.predict(x)
+            expected_predictions = model2.predict(x)
+        testing.assert_array_almost_equal(actual_predictions, expected_predictions)
+    elif isinstance(model1, TransformerModel) and isinstance(model2, TransformerModel):
+        if abs:
+            actual_predictions = model1.transform(np.absolute(x))  # type: ignore
+            expected_predictions = model2.transform(np.absolute(x))  # type: ignore
+        else:
+            actual_predictions = model1.transform(x)
+            expected_predictions = model2.transform(x)
+        testing.assert_array_almost_equal(actual_predictions, expected_predictions)
 
 
 def run_test_transformed_data(
