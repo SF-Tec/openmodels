@@ -1,5 +1,4 @@
 import random
-import numpy as np
 import pytest
 from sklearn.cluster import KMeans
 from sklearn.datasets import make_classification
@@ -45,7 +44,7 @@ def data():
         shuffle=False,
     )
 
-    feature_hasher = FeatureHasher(n_features=N_FEATURES, input_type="dict")
+    feature_hasher = FeatureHasher(n_features=N_FEATURES)
     features = []
     for _ in range(0, 100):
         features.append(
@@ -55,12 +54,8 @@ def data():
                 "c": random.randint(6, 8),
             }
         )
-    y_sparse = np.array([random.randint(0, 2) for i in range(0, 100)])
+    y_sparse = [random.randint(0, 2) for i in range(0, 100)]
     x_sparse = feature_hasher.transform(features)
-
-    # Ensure consistent dtypes for sparse matrices
-    x_sparse.indices = x_sparse.indices.astype(np.int32)
-    x_sparse.indptr = x_sparse.indptr.astype(np.int32)
 
     return x, y, x_sparse, y_sparse
 
