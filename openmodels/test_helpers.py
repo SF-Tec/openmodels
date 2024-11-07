@@ -25,7 +25,9 @@ class TransformerModel(Protocol):
 
 @runtime_checkable
 class FittableModel(Protocol):
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "FittableModel": ...
+    def fit(
+        self, X: Union[np.ndarray, csr_matrix], y: np.ndarray
+    ) -> "FittableModel": ...
 
 
 ModelType = Union[PredictorModel, TransformerModel, FittableModel]
@@ -51,7 +53,10 @@ def ensure_correct_sparse_format(
 
 
 def fit_model(
-    model: FittableModel, x: np.ndarray, y: np.ndarray, abs: bool = False
+    model: FittableModel,
+    x: Union[np.ndarray, csr_matrix],
+    y: np.ndarray,
+    abs: bool = False,
 ) -> FittableModel:
     """
     Fits a model to the provided data.
@@ -60,7 +65,7 @@ def fit_model(
     ----------
     model : T
         The scikit-learn model to fit.
-    x : np.ndarray
+    x : Union[np.ndarray, csr_matrix]
         The training input samples.
     y : np.ndarray
         The target values (class labels in classification, real numbers in regression).
@@ -75,8 +80,11 @@ def fit_model(
     if not isinstance(model, FittableModel):
         raise TypeError("Model must have a 'fit' method")
 
+    # Ensure input data is in correct format before fitting
+    x = ensure_correct_sparse_format(x)
+
     if abs:
-        model.fit(np.absolute(x), y)
+        model.fit(np.absolute(x), y)  # type: ignore
     else:
         model.fit(x, y)
     return model
