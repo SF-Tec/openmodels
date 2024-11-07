@@ -168,18 +168,15 @@ class SklearnSerializer(ModelSerializer):
             return SklearnSerializer._array_to_list(value)
         if isinstance(value, _csr.csr_matrix):
             # Convert indices and indptr to int32 explicitly
-            csr_value = csr_matrix(
-                (
-                    value.data,
-                    value.indices.astype(np.int32),
-                    value.indptr.astype(np.int32),
-                ),
-                shape=value.shape,
-            )
+            csr_value = csr_matrix(value)
             serialized_sparse_matrix = {
                 "data": SklearnSerializer._array_to_list(csr_value.data),
-                "indptr": SklearnSerializer._array_to_list(csr_value.indptr),
-                "indices": SklearnSerializer._array_to_list(csr_value.indices),
+                "indptr": SklearnSerializer._array_to_list(
+                    csr_value.indptr.astype(np.int32)
+                ),
+                "indices": SklearnSerializer._array_to_list(
+                    csr_value.indices.astype(np.int32)
+                ),
                 "shape": SklearnSerializer._array_to_list(csr_value.shape),
             }
             return serialized_sparse_matrix
