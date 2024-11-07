@@ -25,9 +25,7 @@ class TransformerModel(Protocol):
 
 @runtime_checkable
 class FittableModel(Protocol):
-    def fit(
-        self, X: Union[np.ndarray, csr_matrix], y: np.ndarray
-    ) -> "FittableModel": ...
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "FittableModel": ...
 
 
 ModelType = Union[PredictorModel, TransformerModel, FittableModel]
@@ -53,10 +51,7 @@ def ensure_correct_sparse_format(
 
 
 def fit_model(
-    model: FittableModel,
-    x: Union[np.ndarray, csr_matrix],
-    y: np.ndarray,
-    abs: bool = False,
+    model: FittableModel, x: np.ndarray, y: np.ndarray, abs: bool = False
 ) -> FittableModel:
     """
     Fits a model to the provided data.
@@ -65,7 +60,7 @@ def fit_model(
     ----------
     model : T
         The scikit-learn model to fit.
-    x : Union[np.ndarray, csr_matrix]
+    x : np.ndarray
         The training input samples.
     y : np.ndarray
         The target values (class labels in classification, real numbers in regression).
@@ -80,11 +75,8 @@ def fit_model(
     if not isinstance(model, FittableModel):
         raise TypeError("Model must have a 'fit' method")
 
-    # Ensure input data is in correct format before fitting
-    x = ensure_correct_sparse_format(x)
-
     if abs:
-        model.fit(np.absolute(x), y)  # type: ignore
+        model.fit(np.absolute(x), y)
     else:
         model.fit(x, y)
     return model
@@ -149,9 +141,9 @@ def run_test_transformed_data(
 
 def run_test_model(
     model: FittableModel,
-    x: Union[np.ndarray, csr_matrix],
+    x: np.ndarray,
     y: np.ndarray,
-    x_sparse: Optional[csr_matrix],
+    x_sparse: Optional[np.ndarray],
     y_sparse: Optional[np.ndarray],
     model_name: str,
     abs: bool = False,
@@ -163,13 +155,13 @@ def run_test_model(
     ----------
     model : Union[BaseEstimator, ModelType]
         The scikit-learn model to test.
-    x : Union[np.ndarray, csr_matrix]
+    x : np.ndarray
         The training input samples.
     y : np.ndarray
         The target values (class labels in classification, real numbers in regression).
-    x_sparse : Optional[csr_matrix]
+    x_sparse : np.ndarray or None
         The sparse training input samples.
-    y_sparse : Optional[np.ndarray]
+    y_sparse : np.ndarray or None
         The sparse target values.
     model_name : str
         The name of the file to save the serialized model to.
@@ -179,7 +171,6 @@ def run_test_model(
     # Fit and test the model
     fitted_model = fit_model(model, x, y, abs)
     if x_sparse is not None and y_sparse is not None:
-        x_sparse = ensure_correct_sparse_format(x_sparse)
         fit_model(model, x_sparse, y_sparse, abs)
 
     # Create a SerializationManager instance
@@ -195,7 +186,6 @@ def run_test_model(
             cast(PredictorModel, fitted_model),
             cast(PredictorModel, deserialized_model),
             x,
-            abs,
         )
     elif isinstance(model, TransformerModel):
         run_test_transformed_data(
@@ -226,7 +216,6 @@ def run_test_model(
             cast(PredictorModel, fitted_model),
             cast(PredictorModel, deserialized_model_from_file),
             x,
-            abs,
         )
     elif isinstance(model, TransformerModel):
         run_test_transformed_data(

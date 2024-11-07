@@ -52,8 +52,10 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     # "DecisionTreeClassifier": DecisionTreeClassifier, # tree_ instance
     # "DecisionTreeRegressor": DecisionTreeRegressor, # tree_ instance
     "DummyClassifier": DummyClassifier,
-    # "GradientBoostingClassifier": GradientBoostingClassifier,# contains stimators_ attribute with DecisionTreeRegressor
-    # "GradientBoostingRegressor": GradientBoostingRegressor,# contains stimators_ attribute with DecisionTreeRegressor
+    # "GradientBoostingClassifier": GradientBoostingClassifier,
+    # contains stimators_ attribute with DecisionTreeRegressor
+    # "GradientBoostingRegressor": GradientBoostingRegressor,
+    # contains stimators_ attribute with DecisionTreeRegressor
     "Lasso": Lasso,
     "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis,
     "LinearRegression": LinearRegression,
@@ -66,13 +68,14 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     # "Perceptron": Perceptron, # contains loss_function_ attribut with Hinge type
     "PLSRegression": PLSRegression,
     "QuadraticDiscriminantAnalysis": QuadraticDiscriminantAnalysis,
-    # "RandomForestClassifier": RandomForestClassifier, # contains stimators_ attribute with DecisionTreeRegressor
-    # "RandomForestRegressor": RandomForestRegressor, # contains stimators_ attribute with DecisionTreeRegressor
+    # "RandomForestClassifier": RandomForestClassifier,
+    # contains stimators_ attribute with DecisionTreeRegressor
+    # "RandomForestRegressor": RandomForestRegressor,
+    # contains stimators_ attribute with DecisionTreeRegressor
     "Ridge": Ridge,
     "SVC": SVC,
     "SVR": SVR,
 }
-
 # Dictionary of attribute exceptions
 ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
     "BernoulliNB": [],
@@ -197,14 +200,9 @@ class SklearnSerializer(ModelSerializer):
         # Base case: if attr_type is not a list, convert value based on attr_type
         if isinstance(attr_type, str):
             if attr_type == "csr_matrix":
-                # Convert indices and indptr to int32 for SVM compatibility
                 return csr_matrix(
-                    (
-                        np.array(value["data"], dtype=np.float64),
-                        np.array(value["indices"], dtype=np.int32),
-                        np.array(value["indptr"], dtype=np.int32),
-                    ),
-                    shape=tuple(value["shape"]),
+                    (value["data"], value["indices"], value["indptr"]),
+                    shape=value["shape"],
                 )
             elif attr_type == "ndarray":
                 return np.array(value)
@@ -214,8 +212,8 @@ class SklearnSerializer(ModelSerializer):
                 return float(value)
             elif attr_type == "str":
                 return str(value)
-            return value
-
+            # Add other types as needed
+            return value  # Return as-is if no specific conversion is needed
         # Recursive case: if attr_type is a list, process each element in value
         elif isinstance(attr_type, list) and isinstance(value, list):
             return [
