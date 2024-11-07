@@ -25,7 +25,9 @@ class TransformerModel(Protocol):
 
 @runtime_checkable
 class FittableModel(Protocol):
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "FittableModel": ...
+    def fit(
+        self, X: Union[np.ndarray, csr_matrix], y: np.ndarray
+    ) -> "FittableModel": ...
 
 
 ModelType = Union[PredictorModel, TransformerModel, FittableModel]
@@ -51,16 +53,19 @@ def ensure_correct_sparse_format(
 
 
 def fit_model(
-    model: FittableModel, x: np.ndarray, y: np.ndarray, abs: bool = False
+    model: FittableModel,
+    x: Union[np.ndarray, csr_matrix],
+    y: np.ndarray,
+    abs: bool = False,
 ) -> FittableModel:
     """
     Fits a model to the provided data.
 
     Parameters
     ----------
-    model : T
+    model : FittableModel
         The scikit-learn model to fit.
-    x : np.ndarray
+    x : Union[np.ndarray, csr_matrix]
         The training input samples.
     y : np.ndarray
         The target values (class labels in classification, real numbers in regression).
@@ -69,14 +74,21 @@ def fit_model(
 
     Returns
     -------
-    T
+    FittableModel
         The fitted scikit-learn model.
     """
     if not isinstance(model, FittableModel):
         raise TypeError("Model must have a 'fit' method")
 
     if abs:
-        model.fit(np.absolute(x), y)
+        if isinstance(x, csr_matrix):
+            # Handle absolute value for sparse matrix
+            x_abs = csr_matrix(
+                (np.absolute(x.data), x.indices, x.indptr), shape=x.shape
+            )
+            model.fit(x_abs, y)
+        else:
+            model.fit(np.absolute(x), y)
     else:
         model.fit(x, y)
     return model
@@ -143,7 +155,7 @@ def run_test_model(
     model: FittableModel,
     x: np.ndarray,
     y: np.ndarray,
-    x_sparse: Optional[np.ndarray],
+    x_sparse: Optional[Union[np.ndarray, csr_matrix]],
     y_sparse: Optional[np.ndarray],
     model_name: str,
     abs: bool = False,
@@ -159,7 +171,7 @@ def run_test_model(
         The training input samples.
     y : np.ndarray
         The target values (class labels in classification, real numbers in regression).
-    x_sparse : np.ndarray or None
+    x_sparse : Optional[Union[np.ndarray, csr_matrix]]
         The sparse training input samples.
     y_sparse : np.ndarray or None
         The sparse target values.

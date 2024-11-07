@@ -13,7 +13,7 @@ from sklearn.ensemble import (
 from sklearn.naive_bayes import BernoulliNB, GaussianNB, MultinomialNB, ComplementNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
-from openmodels.test_helpers import run_test_model
+from openmodels.test_helpers import run_test_model, ensure_correct_sparse_format
 
 # Define constants
 N_SAMPLES = 50
@@ -109,6 +109,9 @@ def test_qda(data):
 
 def test_svm(data):
     x, y, x_sparse, y_sparse = data
+    # Ensure sparse data is properly formatted before testing
+    x_sparse = ensure_correct_sparse_format(x_sparse)
+
     run_test_model(
         svm.SVC(gamma=0.001, C=100.0, kernel="linear"),
         x,

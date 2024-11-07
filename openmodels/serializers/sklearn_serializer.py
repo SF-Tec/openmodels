@@ -195,19 +195,25 @@ class SklearnSerializer(ModelSerializer):
         ----------
         value : Any
             The JSON-deserialized value.
+        attr_type : str
+            The target type to convert to.
 
         Returns
         -------
         Any
             The scikit-learn type of the value.
         """
-
         # Base case: if attr_type is not a list, convert value based on attr_type
         if isinstance(attr_type, str):
             if attr_type == "csr_matrix":
+                # Ensure all sparse matrix components are of correct dtype
                 return csr_matrix(
-                    (value["data"], value["indices"], value["indptr"]),
-                    shape=value["shape"],
+                    (
+                        np.array(value["data"], dtype=np.float64),
+                        np.array(value["indices"], dtype=np.int32),
+                        np.array(value["indptr"], dtype=np.int32),
+                    ),
+                    shape=tuple(value["shape"]),
                 )
             elif attr_type == "ndarray":
                 return np.array(value)
