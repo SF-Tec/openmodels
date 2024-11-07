@@ -41,13 +41,24 @@ def ensure_correct_sparse_format(
     Ensure the input data is in the correct format for SVM models.
     """
     if isinstance(x, csr_matrix):
+        # Create a new sparse matrix with correct dtypes
+        data = x.data.astype(np.float64)
+        indices = x.indices.astype(np.int32)
+        indptr = x.indptr.astype(np.int32)
+
+        # Ensure the indices are properly sorted
+        for i in range(x.shape[0]):
+            start = indptr[i]
+            end = indptr[i + 1]
+            if end - start > 0:  # If row is not empty
+                order = np.argsort(indices[start:end])
+                indices[start:end] = indices[start:end][order]
+                data[start:end] = data[start:end][order]
+
         return csr_matrix(
-            (
-                x.data.astype(np.float64),
-                x.indices.astype(np.int32),
-                x.indptr.astype(np.int32),
-            ),
+            (data, indices, indptr),
             shape=x.shape,
+            copy=False,  # Avoid unnecessary data copying
         )
     return x
 
@@ -204,16 +215,15 @@ def run_test_model(
     abs : bool, default=False
         Whether to take the absolute value of the input data before fitting the model.
     """
-    # Ensure x is in correct format if it's sparse
-    if isinstance(x, csr_matrix):
-        x = ensure_correct_sparse_format(x)
+    # Always ensure input data is in correct format, regardless of type
+    x = ensure_correct_sparse_format(x)
+    if x_sparse is not None:
+        x_sparse = ensure_correct_sparse_format(x_sparse)
 
     # Fit and test the model
     fitted_model = fit_model(model, x, y, abs)
 
     if x_sparse is not None and y_sparse is not None:
-        # Ensure sparse data is in correct format
-        x_sparse = ensure_correct_sparse_format(x_sparse)
         fit_model(model, x_sparse, y_sparse, abs)
 
     # Create a SerializationManager instance
@@ -223,19 +233,19 @@ def run_test_model(
     serialized_model = manager.serialize(fitted_model, format_name="json")
     deserialized_model = manager.deserialize(serialized_model, format_name="json")
 
-    # Test the deserialized model
+    # Test the deserialized model with properly formatted data
     if isinstance(model, PredictorModel):
         run_test_predictions(
             cast(PredictorModel, fitted_model),
             cast(PredictorModel, deserialized_model),
-            x,
-            abs,  # Pass the abs parameter to run_test_predictions
+            x,  # x is already properly formatted
+            abs,
         )
     elif isinstance(model, TransformerModel):
         run_test_transformed_data(
             cast(TransformerModel, fitted_model),
             cast(TransformerModel, deserialized_model),
-            x,
+            x,  # x is already properly formatted
         )
 
     # Serialize and deserialize the model to/from a file
