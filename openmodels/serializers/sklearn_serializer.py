@@ -7,7 +7,7 @@ converted to and from dictionary representations.
 
 from typing import Any, Dict, List, Type
 import numpy as np
-from scipy.sparse import _csr, csr_matrix
+from scipy.sparse import _csr, csr_matrix  # type: ignore
 
 import sklearn
 from sklearn.base import BaseEstimator, check_is_fitted
@@ -38,7 +38,7 @@ from sklearn.discriminant_analysis import (
 from sklearn.dummy import DummyClassifier
 
 # from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.neural_network import MLPRegressor
 from sklearn.exceptions import NotFittedError
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
