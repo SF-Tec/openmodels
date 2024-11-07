@@ -149,9 +149,9 @@ def run_test_transformed_data(
 
 def run_test_model(
     model: FittableModel,
-    x: np.ndarray,
+    x: Union[np.ndarray, csr_matrix],
     y: np.ndarray,
-    x_sparse: Optional[np.ndarray],
+    x_sparse: Optional[csr_matrix],
     y_sparse: Optional[np.ndarray],
     model_name: str,
     abs: bool = False,
@@ -163,13 +163,13 @@ def run_test_model(
     ----------
     model : Union[BaseEstimator, ModelType]
         The scikit-learn model to test.
-    x : np.ndarray
+    x : Union[np.ndarray, csr_matrix]
         The training input samples.
     y : np.ndarray
         The target values (class labels in classification, real numbers in regression).
-    x_sparse : np.ndarray or None
+    x_sparse : Optional[csr_matrix]
         The sparse training input samples.
-    y_sparse : np.ndarray or None
+    y_sparse : Optional[np.ndarray]
         The sparse target values.
     model_name : str
         The name of the file to save the serialized model to.
@@ -179,6 +179,7 @@ def run_test_model(
     # Fit and test the model
     fitted_model = fit_model(model, x, y, abs)
     if x_sparse is not None and y_sparse is not None:
+        x_sparse = ensure_correct_sparse_format(x_sparse)
         fit_model(model, x_sparse, y_sparse, abs)
 
     # Create a SerializationManager instance
@@ -194,6 +195,7 @@ def run_test_model(
             cast(PredictorModel, fitted_model),
             cast(PredictorModel, deserialized_model),
             x,
+            abs,
         )
     elif isinstance(model, TransformerModel):
         run_test_transformed_data(
@@ -224,6 +226,7 @@ def run_test_model(
             cast(PredictorModel, fitted_model),
             cast(PredictorModel, deserialized_model_from_file),
             x,
+            abs,
         )
     elif isinstance(model, TransformerModel):
         run_test_transformed_data(
