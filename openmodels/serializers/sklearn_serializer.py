@@ -197,9 +197,14 @@ class SklearnSerializer(ModelSerializer):
         # Base case: if attr_type is not a list, convert value based on attr_type
         if isinstance(attr_type, str):
             if attr_type == "csr_matrix":
+                # Convert indices and indptr to int32 for SVM compatibility
                 return csr_matrix(
-                    (value["data"], value["indices"], value["indptr"]),
-                    shape=value["shape"],
+                    (
+                        np.array(value["data"], dtype=np.float64),
+                        np.array(value["indices"], dtype=np.int32),
+                        np.array(value["indptr"], dtype=np.int32),
+                    ),
+                    shape=tuple(value["shape"]),
                 )
             elif attr_type == "ndarray":
                 return np.array(value)
@@ -209,8 +214,7 @@ class SklearnSerializer(ModelSerializer):
                 return float(value)
             elif attr_type == "str":
                 return str(value)
-            # Add other types as needed
-            return value  # Return as-is if no specific conversion is needed
+            return value
 
         # Recursive case: if attr_type is a list, process each element in value
         elif isinstance(attr_type, list) and isinstance(value, list):
