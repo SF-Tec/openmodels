@@ -1,4 +1,5 @@
 import random
+import numpy as np
 import pytest
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.datasets import make_regression
@@ -21,7 +22,7 @@ def data():
         shuffle=False,
     )
 
-    feature_hasher = FeatureHasher(n_features=3)
+    feature_hasher = FeatureHasher(n_features=3, input_type="dict")
     features = []
     for _ in range(0, 100):
         features.append(
@@ -31,8 +32,12 @@ def data():
                 "c": random.randint(6, 8),
             }
         )
-    y_sparse = [random.random() for i in range(0, 100)]
+    y_sparse = np.array([random.random() for i in range(0, 100)])
     x_sparse = feature_hasher.transform(features)
+
+    # Ensure consistent dtypes for sparse matrices
+    x_sparse.indices = x_sparse.indices.astype(np.int32)
+    x_sparse.indptr = x_sparse.indptr.astype(np.int32)
 
     return x, y, x_sparse, y_sparse
 

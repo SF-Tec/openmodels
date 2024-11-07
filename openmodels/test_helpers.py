@@ -8,6 +8,7 @@ from typing import Optional, Union, Protocol, runtime_checkable, TypeVar, cast
 import numpy as np
 from numpy import testing
 from sklearn.base import BaseEstimator
+from scipy.sparse import csr_matrix  # type: ignore
 
 from openmodels import SerializationManager, SklearnSerializer
 
@@ -144,6 +145,11 @@ def run_test_model(
     abs : bool, default=False
         Whether to take the absolute value of the input data before fitting the model.
     """
+    # Ensure consistent dtypes for sparse matrices
+    if x_sparse is not None and isinstance(x_sparse, csr_matrix):
+        x_sparse.indices = x_sparse.indices.astype(np.int32)
+        x_sparse.indptr = x_sparse.indptr.astype(np.int32)
+
     # Fit and test the model
     fitted_model = fit_model(model, x, y, abs)
     if x_sparse is not None and y_sparse is not None:
