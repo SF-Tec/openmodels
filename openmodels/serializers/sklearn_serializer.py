@@ -76,6 +76,7 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "SVC": SVC,
     "SVR": SVR,
 }
+
 # Dictionary of attribute exceptions
 ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
     "BernoulliNB": [],
@@ -321,28 +322,35 @@ class SklearnSerializer(ModelSerializer):
         except NotFittedError as e:
             raise SerializationError("Cannot serialize an unfitted model") from e
 
+        # Get all attributes that are not private, not properties, and not callable
+        # Attributes that have been estimated from the data must always have a name ending with
+        # trailing underscore,
+        # for example the coefficients of some regression estimator would be stored in a
+        # coef_ attribute after fit has been called.
+        # https://scikit-learn.org/stable/glossary.html#term-attributes
+        # https://scikit-learn.org/stable/developers/develop.html#estimated-attributes
+        # NOTE: This is not always true for all estimators, but it is a good starting point.
         filtered_attribute_keys = [
             key
             for key in dir(model)
-            if not key.startswith("__")
+            if not key.startswith("__")  # not private
             and key.endswith("_")
             and not key.endswith("__")
             and not isinstance(getattr(type(model), key, None), property)
             and not callable(getattr(model, key))
         ]
 
-        # Add atribute exceptions
+        # There are some attributes that are removed in the previous filter according to the
+        # sklearn documentation.
+        # However, they are still needed in the serialized model so we add them to the list.
         filtered_attribute_keys = (
             filtered_attribute_keys + ATTRIBUTE_EXCEPTIONS[model.__class__.__name__]
         )
 
         attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
 
-        # attribute_types = [
-        #  type(attribute_value).__name__ for attribute_value in attribute_values
-        # ]
-
-        # Generate attribute types with nested structure
+        # Generate attribute types with nested structure.
+        # These types are used to convert the serialized attributes back to their original types.
         attribute_types = [
             SklearnSerializer.get_nested_types(value) for value in attribute_values
         ]
@@ -351,6 +359,8 @@ class SklearnSerializer(ModelSerializer):
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
+        # We losely follow the ONNX standard for the serialized model.
+        # https://github.com/onnx/onnx/blob/main/docs/IR.md
         return {
             "attributes": dict(
                 zip(filtered_attribute_keys, serializable_attribute_values)
@@ -360,6 +370,8 @@ class SklearnSerializer(ModelSerializer):
             "params": model.get_params(),
             "producer_name": model.__module__.split(".")[0],
             "producer_version": model.__getstate__()["_sklearn_version"],
+            "model_version": model.__getstate__()["_sklearn_version"],
+            "domain": "sklearn",
         }
 
     def deserialize(self, data: Dict[str, Any]) -> BaseEstimator:
