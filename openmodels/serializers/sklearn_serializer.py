@@ -122,18 +122,6 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
     ],
 }
 
-# List of supported types for serialization
-SUPPORTED_TYPES: List[Type] = [
-    bool,
-    str,
-    int,
-    float,
-    list,
-    tuple,
-    np.float64,
-    np.ndarray,
-]
-
 
 class SklearnSerializer(ModelSerializer):
     """
@@ -222,8 +210,12 @@ class SklearnSerializer(ModelSerializer):
                 return int(value)
             elif attr_type == "float":
                 return float(value)
+            elif attr_type == "float64":
+                return np.float64(value)
             elif attr_type == "str":
                 return str(value)
+            elif attr_type == "tuple":
+                return tuple(value)
             # Add other types as needed
             return value  # Return as-is if no specific conversion is needed
         # Recursive case: if attr_type is a list, process each element in value
