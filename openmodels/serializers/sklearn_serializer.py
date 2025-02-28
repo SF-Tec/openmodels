@@ -7,25 +7,28 @@ converted to and from dictionary representations.
 
 from typing import Any, Dict, List, Type
 import numpy as np
+from scipy.sparse import _csr, csr_matrix  # type: ignore
 
 import sklearn
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
-from sklearn.ensemble import (
-    RandomForestRegressor,
-    RandomForestClassifier,
-    GradientBoostingClassifier,
-    GradientBoostingRegressor,
-)
+
+# from sklearn.ensemble import (
+#    RandomForestRegressor,
+#    RandomForestClassifier,
+#    GradientBoostingClassifier,
+#    GradientBoostingRegressor,
+# )
+
 from sklearn.svm import SVR, SVC
 from sklearn.linear_model import (
     LogisticRegression,
     Lasso,
     Ridge,
     LinearRegression,
-    Perceptron,
+    # Perceptron,
 )
 from sklearn.naive_bayes import BernoulliNB, GaussianNB, MultinomialNB, ComplementNB
 from sklearn.discriminant_analysis import (
@@ -33,8 +36,9 @@ from sklearn.discriminant_analysis import (
     QuadraticDiscriminantAnalysis,
 )
 from sklearn.dummy import DummyClassifier
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.neural_network import MLPClassifier, MLPRegressor
+
+# from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.neural_network import MLPRegressor
 from sklearn.exceptions import NotFittedError
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
@@ -44,29 +48,78 @@ from openmodels.protocols import ModelSerializer
 SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
     "BernoulliNB": BernoulliNB,
     "ComplementNB": ComplementNB,
-    "DecisionTreeClassifier": DecisionTreeClassifier,
-    "DecisionTreeRegressor": DecisionTreeRegressor,
-    "DummyClassifier": DummyClassifier,
     "GaussianNB": GaussianNB,
-    "GradientBoostingClassifier": GradientBoostingClassifier,
-    "GradientBoostingRegressor": GradientBoostingRegressor,
+    # "DecisionTreeClassifier": DecisionTreeClassifier, # tree_ instance
+    # "DecisionTreeRegressor": DecisionTreeRegressor, # tree_ instance
+    "DummyClassifier": DummyClassifier,
+    # "GradientBoostingClassifier": GradientBoostingClassifier,
+    # contains stimators_ attribute with DecisionTreeRegressor
+    # "GradientBoostingRegressor": GradientBoostingRegressor,
+    # contains stimators_ attribute with DecisionTreeRegressor
     "Lasso": Lasso,
     "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis,
     "LinearRegression": LinearRegression,
     "LogisticRegression": LogisticRegression,
     "KMeans": KMeans,
-    "MLPClassifier": MLPClassifier,
+    # "MLPClassifier": MLPClassifier,  # needs _label_binarizer attribute with LabelBinarizer type
     "MLPRegressor": MLPRegressor,
     "MultinomialNB": MultinomialNB,
     "PCA": PCA,
-    "Perceptron": Perceptron,
+    # "Perceptron": Perceptron, # contains loss_function_ attribut with Hinge type
     "PLSRegression": PLSRegression,
     "QuadraticDiscriminantAnalysis": QuadraticDiscriminantAnalysis,
-    "RandomForestClassifier": RandomForestClassifier,
-    "RandomForestRegressor": RandomForestRegressor,
+    # "RandomForestClassifier": RandomForestClassifier,
+    # contains stimators_ attribute with DecisionTreeRegressor
+    # "RandomForestRegressor": RandomForestRegressor,
+    # contains stimators_ attribute with DecisionTreeRegressor
     "Ridge": Ridge,
     "SVC": SVC,
     "SVR": SVR,
+}
+
+# Dictionary of attribute exceptions
+ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
+    "BernoulliNB": [],
+    "ComplementNB": [],
+    # "DecisionTreeClassifier": [], # not suppoted
+    # "DecisionTreeRegressor": [], # not suppoted
+    "DummyClassifier": ["_strategy"],
+    "GaussianNB": [],
+    # "GradientBoostingClassifier": [], # not supported
+    "GradientBoostingRegressor": [],
+    "Lasso": [],
+    "LinearDiscriminantAnalysis": [],
+    "LinearRegression": [],
+    "LogisticRegression": [],
+    "KMeans": ["_n_threads"],
+    # "MLPClassifier": ["_label_binarizer"],  # not supported
+    "MLPRegressor": [],  # not supported
+    "MultinomialNB": [],
+    "PCA": [],
+    # "Perceptron": [], # not supported
+    "PLSRegression": ["_x_mean", "_predict_1d"],
+    "QuadraticDiscriminantAnalysis": [],
+    # "RandomForestClassifier": [], # not supported
+    # "RandomForestRegressor": [], # not supported
+    "Ridge": [],
+    "SVC": [
+        "_sparse",
+        "_n_support",
+        "_dual_coef_",
+        "_intercept_",
+        "_probA",
+        "_probB",
+        "_gamma",
+    ],
+    "SVR": [
+        "_sparse",
+        "_n_support",
+        "_dual_coef_",
+        "_intercept_",
+        "_probA",
+        "_probB",
+        "_gamma",
+    ],
 }
 
 # List of supported types for serialization
@@ -117,10 +170,25 @@ class SklearnSerializer(ModelSerializer):
         """
         if isinstance(value, (np.ndarray, list)):
             return SklearnSerializer._array_to_list(value)
+        if isinstance(value, _csr.csr_matrix):
+            # Convert indices and indptr to int32 explicitly
+            csr_value = csr_matrix(value)
+            serialized_sparse_matrix = {
+                "data": SklearnSerializer._array_to_list(csr_value.data),
+                "indptr": SklearnSerializer._array_to_list(
+                    csr_value.indptr.astype(np.int32)
+                ),
+                "indices": SklearnSerializer._array_to_list(
+                    csr_value.indices.astype(np.int32)
+                ),
+                "shape": SklearnSerializer._array_to_list(csr_value.shape),
+            }
+            return serialized_sparse_matrix
+
         return value
 
     @staticmethod
-    def _convert_to_sklearn_types(value: Any) -> Any:
+    def _convert_to_sklearn_types(value: Any, attr_type: str = "none") -> Any:
         """
         Convert a JSON-deserialized value to its scikit-learn type.
 
@@ -128,14 +196,43 @@ class SklearnSerializer(ModelSerializer):
         ----------
         value : Any
             The JSON-deserialized value.
+        attr_type : str
+            The target type to convert to.
 
         Returns
         -------
         Any
             The scikit-learn type of the value.
         """
-        if isinstance(value, list):
-            return np.array(value)
+        # Base case: if attr_type is not a list, convert value based on attr_type
+        if isinstance(attr_type, str):
+            if attr_type == "csr_matrix":
+                # Ensure all sparse matrix components are of correct dtype
+                return csr_matrix(
+                    (
+                        np.array(value["data"], dtype=np.float64),
+                        np.array(value["indices"], dtype=np.int32),
+                        np.array(value["indptr"], dtype=np.int32),
+                    ),
+                    shape=tuple(value["shape"]),
+                )
+            elif attr_type == "ndarray":
+                return np.array(value)
+            elif attr_type == "int":
+                return int(value)
+            elif attr_type == "float":
+                return float(value)
+            elif attr_type == "str":
+                return str(value)
+            # Add other types as needed
+            return value  # Return as-is if no specific conversion is needed
+        # Recursive case: if attr_type is a list, process each element in value
+        elif isinstance(attr_type, list) and isinstance(value, list):
+            return [
+                SklearnSerializer._convert_to_sklearn_types(v, t)
+                for v, t in zip(value, attr_type)
+            ]
+
         return value
 
     @staticmethod
@@ -161,6 +258,33 @@ class SklearnSerializer(ModelSerializer):
             return tuple(SklearnSerializer._array_to_list(item) for item in array)
         else:
             return array
+
+    @staticmethod
+    def get_nested_types(item: Any) -> Any:
+        """
+        Recursively determine the type of elements within nested lists.
+
+        Parameters
+        ----------
+        item : Any
+            The item to inspect for nested types.
+
+        Returns
+        -------
+        Any
+            A nested list representing the types of elements in the input item.
+
+        Examples
+        ---------
+
+        [1, [1, 2, [1, 2, 3]], 2] -> ['int',['int','int','ndarray'],'int']
+
+        """
+        if isinstance(item, list) and item:  # If it's a list and not empty
+            return [SklearnSerializer.get_nested_types(subitem) for subitem in item]
+        else:
+            # Return the type name if it's not a list or it's an empty list
+            return type(item).__name__
 
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
@@ -198,33 +322,56 @@ class SklearnSerializer(ModelSerializer):
         except NotFittedError as e:
             raise SerializationError("Cannot serialize an unfitted model") from e
 
+        # Get all attributes that are not private, not properties, and not callable
+        # Attributes that have been estimated from the data must always have a name ending with
+        # trailing underscore,
+        # for example the coefficients of some regression estimator would be stored in a
+        # coef_ attribute after fit has been called.
+        # https://scikit-learn.org/stable/glossary.html#term-attributes
+        # https://scikit-learn.org/stable/developers/develop.html#estimated-attributes
+        # NOTE: This is not always true for all estimators, but it is a good starting point.
         filtered_attribute_keys = [
             key
             for key in dir(model)
-            if not callable(getattr(model, key))
+            if not key.startswith("__")  # not private
+            and key.endswith("_")
             and not key.endswith("__")
-            and type(getattr(model, key)) in SUPPORTED_TYPES
-            and (
-                not isinstance(getattr(type(model), key, None), property)
-                or getattr(type(model), key).fset is not None
-            )
+            and not isinstance(getattr(type(model), key, None), property)
+            and not callable(getattr(model, key))
         ]
 
+        # There are some attributes that are removed in the previous filter according to the
+        # sklearn documentation.
+        # However, they are still needed in the serialized model so we add them to the list.
+        filtered_attribute_keys = (
+            filtered_attribute_keys + ATTRIBUTE_EXCEPTIONS[model.__class__.__name__]
+        )
+
         attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
-        attribute_types = [type(value) for value in attribute_values]
+
+        # Generate attribute types with nested structure.
+        # These types are used to convert the serialized attributes back to their original types.
+        attribute_types = [
+            SklearnSerializer.get_nested_types(value) for value in attribute_values
+        ]
+
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
+        # We losely follow the ONNX standard for the serialized model.
+        # https://github.com/onnx/onnx/blob/main/docs/IR.md
         return {
             "attributes": dict(
                 zip(filtered_attribute_keys, serializable_attribute_values)
             ),
-            "attribute_types": [str(attr_type) for attr_type in attribute_types],
+            "attribute_types": dict(zip(filtered_attribute_keys, attribute_types)),
             "estimator_class": model.__class__.__name__,
             "params": model.get_params(),
             "producer_name": model.__module__.split(".")[0],
             "producer_version": model.__getstate__()["_sklearn_version"],
+            "model_version": model.__getstate__()["_sklearn_version"],
+            "domain": "sklearn",
         }
 
     def deserialize(self, data: Dict[str, Any]) -> BaseEstimator:
@@ -264,6 +411,9 @@ class SklearnSerializer(ModelSerializer):
         model = SUPPORTED_ESTIMATORS[estimator_class](**data["params"])
 
         for attribute, value in data["attributes"].items():
-            setattr(model, attribute, self._convert_to_sklearn_types(value))
+            # Retrieve the attribute type from data["attribute_types"]
+            attr_type = data["attribute_types"].get(attribute)
+            # Pass both value and attr_type to _convert_to_sklearn_types
+            setattr(model, attribute, self._convert_to_sklearn_types(value, attr_type))
 
         return model

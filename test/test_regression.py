@@ -8,7 +8,7 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR
-from openmodels.test_helpers import run_test_model
+from openmodels.test_helpers import run_test_model, ensure_correct_sparse_format
 
 
 @pytest.fixture(scope="module")
@@ -32,7 +32,7 @@ def data():
             }
         )
     y_sparse = [random.random() for i in range(0, 100)]
-    x_sparse = feature_hasher.transform(features)
+    x_sparse = feature_hasher.transform(iter(features))
 
     return x, y, x_sparse, y_sparse
 
@@ -58,6 +58,9 @@ def test_ridge_regression(data):
 @pytest.mark.skip(reason="Feature not ready")
 def test_svr(data):
     x, y, x_sparse, y_sparse = data
+    # Ensure sparse data is properly formatted before testing
+    x_sparse = ensure_correct_sparse_format(x_sparse)
+
     run_test_model(
         SVR(gamma="scale", C=1.0, epsilon=0.2), x, y, x_sparse, y_sparse, "svr.json"
     )
@@ -102,7 +105,6 @@ def test_random_forest_regression(data):
     )
 
 
-@pytest.mark.skip(reason="Feature not ready")
 def test_mlp_regression(data):
     x, y, x_sparse, y_sparse = data
     run_test_model(MLPRegressor(), x, y, x_sparse, y_sparse, "mlp-regression.json")
@@ -111,5 +113,5 @@ def test_mlp_regression(data):
 def test_pls_regression(data):
     x, y, _, _ = data
     run_test_model(
-        PLSRegression(n_components=2), x, y, None, None, "pls-regression.json"
+        PLSRegression(n_components=2), x, y, None, None, "pls-regression.json"  # type: ignore
     )
