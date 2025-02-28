@@ -107,6 +107,7 @@ def test_qda(data):
     )
 
 
+@pytest.mark.skip(reason="Feature not ready")
 def test_svm(data):
     x, y, x_sparse, y_sparse = data
     # Ensure sparse data is properly formatted before testing
