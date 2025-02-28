@@ -1,6 +1,5 @@
 """
 Scikit-learn model serializer for the OpenModels library.
-
 This module provides a serializer for scikit-learn models, allowing them to be
 converted to and from dictionary representations.
 """
