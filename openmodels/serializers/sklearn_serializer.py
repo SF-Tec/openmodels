@@ -5,7 +5,7 @@ This module provides a serializer for scikit-learn models, allowing them to be
 converted to and from dictionary representations.
 """
 
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, Type, Optional
 import numpy as np
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 
@@ -176,7 +176,7 @@ class SklearnSerializer(ModelSerializer):
         return value
 
     @staticmethod
-    def _convert_to_sklearn_types(value: Any, attr_type: Any = "none", attr_dtype: str = None) -> Any:
+    def _convert_to_sklearn_types(value: Any, attr_type: Any = "none", attr_dtype: Optional[str] = None) -> Any:
         """
         Convert a JSON-deserialized value to its scikit-learn type.
 
@@ -367,7 +367,7 @@ class SklearnSerializer(ModelSerializer):
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
-        attribute_dtypes = {
+        attribute_dtypes_map = {
             key: SklearnSerializer.get_dtype(value) 
             for key, value in zip(filtered_attribute_keys, attribute_values)
             if isinstance(value, np.ndarray)  # Only include NumPy arrays
@@ -380,7 +380,7 @@ class SklearnSerializer(ModelSerializer):
                 zip(filtered_attribute_keys, serializable_attribute_values)
             ),
             "attribute_types": dict(zip(filtered_attribute_keys, attribute_types)),
-            "attribute_dtypes": attribute_dtypes,
+            "attribute_dtypes": attribute_dtypes_map,
             "estimator_class": model.__class__.__name__,
             "params": model.get_params(),
             "producer_name": model.__module__.split(".")[0],
