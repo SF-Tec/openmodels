@@ -367,6 +367,12 @@ class SklearnSerializer(ModelSerializer):
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
+        attribute_dtypes = {
+            key: SklearnSerializer.get_dtype(value) 
+            for key, value in zip(filtered_attribute_keys, attribute_values)
+            if isinstance(value, np.ndarray)  # Only include NumPy arrays
+        }
+
         # We losely follow the ONNX standard for the serialized model.
         # https://github.com/onnx/onnx/blob/main/docs/IR.md
         return {
@@ -374,7 +380,7 @@ class SklearnSerializer(ModelSerializer):
                 zip(filtered_attribute_keys, serializable_attribute_values)
             ),
             "attribute_types": dict(zip(filtered_attribute_keys, attribute_types)),
-            "attribute_dtypes": dict(zip(filtered_attribute_keys, attribute_dtypes)),
+            "attribute_dtypes": attribute_dtypes,
             "estimator_class": model.__class__.__name__,
             "params": model.get_params(),
             "producer_name": model.__module__.split(".")[0],
