@@ -282,13 +282,11 @@ class SklearnSerializer(ModelSerializer):
     @staticmethod
     def get_dtype(value: Any) -> str:
         """
-        Get the dtype of a numpy array or scalar, otherwise return the type name.
+        Get the dtype of a numpy array, otherwise return None.
         """
         if isinstance(value, np.ndarray):
             return str(value.dtype)  # Get the actual numpy dtype
-        elif isinstance(value, (int, float, np.integer, np.floating)):
-            return type(value).__name__  # Get the type of scalar values
-        return type(value).__name__  # For other objects, return class name
+        return None
 
 
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
