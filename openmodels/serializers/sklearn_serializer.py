@@ -358,10 +358,6 @@ class SklearnSerializer(ModelSerializer):
             SklearnSerializer.get_nested_types(value) for value in attribute_values
         ]
 
-        attribute_dtypes = [
-            SklearnSerializer.get_dtype(value) for value in attribute_values
-        ]
-
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
