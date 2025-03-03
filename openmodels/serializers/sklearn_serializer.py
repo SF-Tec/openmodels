@@ -176,7 +176,9 @@ class SklearnSerializer(ModelSerializer):
         return value
 
     @staticmethod
-    def _convert_to_sklearn_types(value: Any, attr_type: Any = "none", attr_dtype: Optional[str] = None) -> Any:
+    def _convert_to_sklearn_types(
+        value: Any, attr_type: Any = "none", attr_dtype: Optional[str] = None
+    ) -> Any:
         """
         Convert a JSON-deserialized value to its scikit-learn type.
 
@@ -277,8 +279,7 @@ class SklearnSerializer(ModelSerializer):
         else:
             # Return the type name if it's not a list or it's an empty list
             return type(item).__name__
-        
-    
+
     @staticmethod
     def get_dtype(value: Any) -> str:
         """
@@ -286,8 +287,7 @@ class SklearnSerializer(ModelSerializer):
         """
         if isinstance(value, np.ndarray):
             return str(value.dtype)  # Get the actual numpy dtype
-        return ''
-
+        return ""
 
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
@@ -362,13 +362,12 @@ class SklearnSerializer(ModelSerializer):
             SklearnSerializer.get_dtype(value) for value in attribute_values
         ]
 
-
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
         attribute_dtypes_map = {
-            key: SklearnSerializer.get_dtype(value) 
+            key: SklearnSerializer.get_dtype(value)
             for key, value in zip(filtered_attribute_keys, attribute_values)
             if isinstance(value, np.ndarray)  # Only include NumPy arrays
         }
@@ -429,8 +428,12 @@ class SklearnSerializer(ModelSerializer):
             # Retrieve the attribute type from data["attribute_types"]
             attr_type = data["attribute_types"].get(attribute)
             # Get dtype if available
-            attr_dtype = data.get("attribute_dtypes", {}).get(attribute)  
+            attr_dtype = data.get("attribute_dtypes", {}).get(attribute)
             # Pass both value and attr_type to _convert_to_sklearn_types
-            setattr(model, attribute, self._convert_to_sklearn_types(value, attr_type, attr_dtype))
+            setattr(
+                model,
+                attribute,
+                self._convert_to_sklearn_types(value, attr_type, attr_dtype),
+            )
 
         return model
