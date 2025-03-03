@@ -23,13 +23,13 @@ pip install openmodels
 
 ```python
 from openmodels import SerializationManager, SklearnSerializer
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.decomposition import PCA
 from sklearn.datasets import make_classification
 
 # Create and train a scikit-learn model
-X, y = make_classification(n_samples=1000, n_features=4, n_informative=2, n_redundant=0, random_state=0, shuffle=False)
-model = RandomForestClassifier(n_estimators=10, max_depth=5, random_state=0)
-model.fit(X, y)
+X, _ = make_classification(n_samples=1000, n_features=4, n_informative=2, n_redundant=0, random_state=0, shuffle=False)
+model = PCA(n_components=2, random_state=0)
+model.fit(X)
 
 # Create a SerializationManager
 manager = SerializationManager(SklearnSerializer())
@@ -41,8 +41,8 @@ serialized_model = manager.serialize(model)
 deserialized_model = manager.deserialize(serialized_model)
 
 # Use the deserialized model
-predictions = deserialized_model.predict(X[:5])
-print(predictions)
+transformed_data = deserialized_model.transform(X[:5])
+print(transformed_data)
 ```
 
 ## Extensibility
