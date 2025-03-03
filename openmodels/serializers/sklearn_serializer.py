@@ -5,7 +5,7 @@ This module provides a serializer for scikit-learn models, allowing them to be
 converted to and from dictionary representations.
 """
 
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, Type, Optional
 import numpy as np
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 
@@ -122,18 +122,6 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
     ],
 }
 
-# List of supported types for serialization
-SUPPORTED_TYPES: List[Type] = [
-    bool,
-    str,
-    int,
-    float,
-    list,
-    tuple,
-    np.float64,
-    np.ndarray,
-]
-
 
 class SklearnSerializer(ModelSerializer):
     """
@@ -188,7 +176,9 @@ class SklearnSerializer(ModelSerializer):
         return value
 
     @staticmethod
-    def _convert_to_sklearn_types(value: Any, attr_type: str = "none") -> Any:
+    def _convert_to_sklearn_types(
+        value: Any, attr_type: Any = "none", attr_dtype: Optional[str] = None
+    ) -> Any:
         """
         Convert a JSON-deserialized value to its scikit-learn type.
 
@@ -210,26 +200,30 @@ class SklearnSerializer(ModelSerializer):
                 # Ensure all sparse matrix components are of correct dtype
                 return csr_matrix(
                     (
-                        np.array(value["data"], dtype=np.float64),
+                        np.array(value["data"], dtype=attr_dtype or np.float64),
                         np.array(value["indices"], dtype=np.int32),
                         np.array(value["indptr"], dtype=np.int32),
                     ),
                     shape=tuple(value["shape"]),
                 )
             elif attr_type == "ndarray":
-                return np.array(value)
+                return np.array(value, dtype=attr_dtype or np.float64)
             elif attr_type == "int":
                 return int(value)
             elif attr_type == "float":
                 return float(value)
+            elif attr_type == "float64":
+                return np.float64(value)
             elif attr_type == "str":
                 return str(value)
+            elif attr_type == "tuple":
+                return tuple(value)
             # Add other types as needed
             return value  # Return as-is if no specific conversion is needed
         # Recursive case: if attr_type is a list, process each element in value
         elif isinstance(attr_type, list) and isinstance(value, list):
             return [
-                SklearnSerializer._convert_to_sklearn_types(v, t)
+                SklearnSerializer._convert_to_sklearn_types(v, t, attr_dtype)
                 for v, t in zip(value, attr_type)
             ]
 
@@ -285,6 +279,15 @@ class SklearnSerializer(ModelSerializer):
         else:
             # Return the type name if it's not a list or it's an empty list
             return type(item).__name__
+
+    @staticmethod
+    def get_dtype(value: Any) -> str:
+        """
+        Get the dtype of a numpy array, otherwise return empty string.
+        """
+        if isinstance(value, np.ndarray):
+            return str(value.dtype)  # Get the actual numpy dtype
+        return ""
 
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
@@ -359,6 +362,12 @@ class SklearnSerializer(ModelSerializer):
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
+        attribute_dtypes_map = {
+            key: SklearnSerializer.get_dtype(value)
+            for key, value in zip(filtered_attribute_keys, attribute_values)
+            if isinstance(value, np.ndarray)  # Only include NumPy arrays
+        }
+
         # We losely follow the ONNX standard for the serialized model.
         # https://github.com/onnx/onnx/blob/main/docs/IR.md
         return {
@@ -366,6 +375,7 @@ class SklearnSerializer(ModelSerializer):
                 zip(filtered_attribute_keys, serializable_attribute_values)
             ),
             "attribute_types": dict(zip(filtered_attribute_keys, attribute_types)),
+            "attribute_dtypes": attribute_dtypes_map,
             "estimator_class": model.__class__.__name__,
             "params": model.get_params(),
             "producer_name": model.__module__.split(".")[0],
@@ -413,7 +423,13 @@ class SklearnSerializer(ModelSerializer):
         for attribute, value in data["attributes"].items():
             # Retrieve the attribute type from data["attribute_types"]
             attr_type = data["attribute_types"].get(attribute)
+            # Get dtype if available
+            attr_dtype = data.get("attribute_dtypes", {}).get(attribute)
             # Pass both value and attr_type to _convert_to_sklearn_types
-            setattr(model, attribute, self._convert_to_sklearn_types(value, attr_type))
+            setattr(
+                model,
+                attribute,
+                self._convert_to_sklearn_types(value, attr_type, attr_dtype),
+            )
 
         return model
