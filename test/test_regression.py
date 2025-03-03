@@ -55,7 +55,6 @@ def test_ridge_regression(data):
     run_test_model(Ridge(alpha=0.5), x, y, x_sparse, y_sparse, "ridge-regression.json")
 
 
-@pytest.mark.skip(reason="Feature not ready")
 def test_svr(data):
     x, y, x_sparse, y_sparse = data
     # Ensure sparse data is properly formatted before testing
