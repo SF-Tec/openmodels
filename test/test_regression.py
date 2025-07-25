@@ -3,7 +3,7 @@ import pytest
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.datasets import make_regression
 from sklearn.feature_extraction import FeatureHasher
-from sklearn.linear_model import LinearRegression, Lasso, Ridge
+from sklearn.linear_model import ARDRegression,LinearRegression, Lasso, Ridge
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
@@ -38,6 +38,19 @@ def data():
 
 
 # Test each model
+def test_ard_regression(data):
+    x, y, x_sparse, y_sparse = data
+    # Convert sparse matrix to dense for ARDRegression
+    x_sparse_dense = x_sparse.toarray()
+    run_test_model(
+        ARDRegression(),
+        x,
+        y,
+        x_sparse_dense,
+        y_sparse,
+        "ard-regression.json"
+    )
+
 def test_linear_regression(data):
     x, y, x_sparse, y_sparse = data
     run_test_model(

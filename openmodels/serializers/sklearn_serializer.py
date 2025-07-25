@@ -24,6 +24,7 @@ from sklearn.cross_decomposition import PLSRegression
 
 from sklearn.svm import SVR, SVC
 from sklearn.linear_model import (
+    ARDRegression,
     LogisticRegression,
     Lasso,
     Ridge,
@@ -46,6 +47,7 @@ from openmodels.protocols import ModelSerializer
 
 # Dictionary of supported estimators
 SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
+    "ARDRegression": ARDRegression,
     "BernoulliNB": BernoulliNB,
     "ComplementNB": ComplementNB,
     "GaussianNB": GaussianNB,
@@ -79,6 +81,7 @@ SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
 
 # Dictionary of attribute exceptions
 ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
+    "ARDRegression": [],
     "BernoulliNB": [],
     "ComplementNB": [],
     # "DecisionTreeClassifier": [], # not suppoted
