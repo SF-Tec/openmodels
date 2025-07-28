@@ -20,13 +20,26 @@ ALL_ESTIMATORS = {
     name: cls for name, cls in all_estimators() if issubclass(cls, BaseEstimator)
 }
 
-SUPPORTED_ESTIMATORS: list[str] = ["BernoulliNB","ComplementNB","DummyClassifier",  
-                                   "GaussianNB", "GradientBoostingRegressor",
-                                   "Lasso", "LinearDiscriminantAnalysis",
-                                   "LinearRegression", "LogisticRegression",
-                                   "KMeans", "MLPRegressor", "MultinomialNB",
-                                   "PCA", "PLSRegression", "QuadraticDiscriminantAnalysis",
-                                   "Ridge", "SVC", "SVR"]
+SUPPORTED_ESTIMATORS: list[str] = [
+    "BernoulliNB",
+    "ComplementNB",
+    "DummyClassifier",
+    "GaussianNB",
+    "GradientBoostingRegressor",
+    "Lasso",
+    "LinearDiscriminantAnalysis",
+    "LinearRegression",
+    "LogisticRegression",
+    "KMeans",
+    "MLPRegressor",
+    "MultinomialNB",
+    "PCA",
+    "PLSRegression",
+    "QuadraticDiscriminantAnalysis",
+    "Ridge",
+    "SVC",
+    "SVR",
+]
 
 # Dictionary of attribute exceptions
 ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
@@ -278,8 +291,8 @@ class SklearnSerializer(ModelSerializer):
         # There are some attributes that are removed in the previous filter according to the
         # sklearn documentation.
         # However, they are still needed in the serialized model so we add them to the list.
-        filtered_attribute_keys = (
-            filtered_attribute_keys + ATTRIBUTE_EXCEPTIONS.get(model.__class__.__name__, [])
+        filtered_attribute_keys = filtered_attribute_keys + ATTRIBUTE_EXCEPTIONS.get(
+            model.__class__.__name__, []
         )
 
         attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
