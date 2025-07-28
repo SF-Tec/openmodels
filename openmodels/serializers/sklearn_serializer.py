@@ -5,13 +5,13 @@ This module provides a serializer for scikit-learn models, allowing them to be
 converted to and from dictionary representations.
 """
 
-from typing import Any, Dict, Type, Optional
+from typing import Any, Dict, Optional
 import numpy as np
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
-from sklearn.utils import all_estimators
+from sklearn.utils.discovery import all_estimators
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
 from openmodels.protocols import ModelSerializer

@@ -99,7 +99,7 @@ OpenModels currently supports a wide range of scikit-learn models, including:
 - Clustering: KMeans
 - Dimensionality Reduction: PCA
 
-For a full list of supported models, please refer to the `SUPPORTED_ESTIMATORS` dictionary in `serializers/sklearn_serializer.py`.
+For a full list of supported models, please refer to the `SUPPORTED_ESTIMATORS` list in `serializers/sklearn_serializer.py`.
 
 ## Contributing
 
