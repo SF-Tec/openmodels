@@ -9,99 +9,31 @@ from typing import Any, Dict, Type, Optional
 import numpy as np
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 
-import sklearn
 from sklearn.base import BaseEstimator, check_is_fitted
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
-from sklearn.cross_decomposition import PLSRegression
-
-# from sklearn.ensemble import (
-#    RandomForestRegressor,
-#    RandomForestClassifier,
-#    GradientBoostingClassifier,
-#    GradientBoostingRegressor,
-# )
-
-from sklearn.svm import SVR, SVC
-from sklearn.linear_model import (
-    LogisticRegression,
-    Lasso,
-    Ridge,
-    LinearRegression,
-    # Perceptron,
-)
-from sklearn.naive_bayes import BernoulliNB, GaussianNB, MultinomialNB, ComplementNB
-from sklearn.discriminant_analysis import (
-    LinearDiscriminantAnalysis,
-    QuadraticDiscriminantAnalysis,
-)
-from sklearn.dummy import DummyClassifier
-
-# from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.neural_network import MLPRegressor
 from sklearn.exceptions import NotFittedError
+from sklearn.utils import all_estimators
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
 from openmodels.protocols import ModelSerializer
 
-# Dictionary of supported estimators
-SUPPORTED_ESTIMATORS: Dict[str, Type[sklearn.base.BaseEstimator]] = {
-    "BernoulliNB": BernoulliNB,
-    "ComplementNB": ComplementNB,
-    "GaussianNB": GaussianNB,
-    # "DecisionTreeClassifier": DecisionTreeClassifier, # tree_ instance
-    # "DecisionTreeRegressor": DecisionTreeRegressor, # tree_ instance
-    "DummyClassifier": DummyClassifier,
-    # "GradientBoostingClassifier": GradientBoostingClassifier,
-    # contains stimators_ attribute with DecisionTreeRegressor
-    # "GradientBoostingRegressor": GradientBoostingRegressor,
-    # contains stimators_ attribute with DecisionTreeRegressor
-    "Lasso": Lasso,
-    "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis,
-    "LinearRegression": LinearRegression,
-    "LogisticRegression": LogisticRegression,
-    "KMeans": KMeans,
-    # "MLPClassifier": MLPClassifier,  # needs _label_binarizer attribute with LabelBinarizer type
-    "MLPRegressor": MLPRegressor,
-    "MultinomialNB": MultinomialNB,
-    "PCA": PCA,
-    # "Perceptron": Perceptron, # contains loss_function_ attribut with Hinge type
-    "PLSRegression": PLSRegression,
-    "QuadraticDiscriminantAnalysis": QuadraticDiscriminantAnalysis,
-    # "RandomForestClassifier": RandomForestClassifier,
-    # contains stimators_ attribute with DecisionTreeRegressor
-    # "RandomForestRegressor": RandomForestRegressor,
-    # contains stimators_ attribute with DecisionTreeRegressor
-    "Ridge": Ridge,
-    "SVC": SVC,
-    "SVR": SVR,
+ALL_ESTIMATORS = {
+    name: cls for name, cls in all_estimators() if issubclass(cls, BaseEstimator)
 }
+
+SUPPORTED_ESTIMATORS: list[str] = ["BernoulliNB","ComplementNB","DummyClassifier",  
+                                   "GaussianNB", "GradientBoostingRegressor",
+                                   "Lasso", "LinearDiscriminantAnalysis",
+                                   "LinearRegression", "LogisticRegression",
+                                   "KMeans", "MLPRegressor", "MultinomialNB",
+                                   "PCA", "PLSRegression", "QuadraticDiscriminantAnalysis",
+                                   "Ridge", "SVC", "SVR"]
 
 # Dictionary of attribute exceptions
 ATTRIBUTE_EXCEPTIONS: Dict[str, list] = {
-    "BernoulliNB": [],
-    "ComplementNB": [],
-    # "DecisionTreeClassifier": [], # not suppoted
-    # "DecisionTreeRegressor": [], # not suppoted
     "DummyClassifier": ["_strategy"],
-    "GaussianNB": [],
-    # "GradientBoostingClassifier": [], # not supported
-    "GradientBoostingRegressor": [],
-    "Lasso": [],
-    "LinearDiscriminantAnalysis": [],
-    "LinearRegression": [],
-    "LogisticRegression": [],
     "KMeans": ["_n_threads"],
     # "MLPClassifier": ["_label_binarizer"],  # not supported
-    "MLPRegressor": [],  # not supported
-    "MultinomialNB": [],
-    "PCA": [],
-    # "Perceptron": [], # not supported
     "PLSRegression": ["_x_mean", "_predict_1d"],
-    "QuadraticDiscriminantAnalysis": [],
-    # "RandomForestClassifier": [], # not supported
-    # "RandomForestRegressor": [], # not supported
-    "Ridge": [],
     "SVC": [
         "_sparse",
         "_n_support",
@@ -347,7 +279,7 @@ class SklearnSerializer(ModelSerializer):
         # sklearn documentation.
         # However, they are still needed in the serialized model so we add them to the list.
         filtered_attribute_keys = (
-            filtered_attribute_keys + ATTRIBUTE_EXCEPTIONS[model.__class__.__name__]
+            filtered_attribute_keys + ATTRIBUTE_EXCEPTIONS.get(model.__class__.__name__, [])
         )
 
         attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
@@ -418,7 +350,7 @@ class SklearnSerializer(ModelSerializer):
                 f"Unsupported estimator class: {estimator_class}"
             )
 
-        model = SUPPORTED_ESTIMATORS[estimator_class](**data["params"])
+        model = ALL_ESTIMATORS[estimator_class](**data["params"])
 
         for attribute, value in data["attributes"].items():
             # Retrieve the attribute type from data["attribute_types"]
