@@ -63,7 +63,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
     "Perceptron",  # Object of type Hinge is not JSON serializable
     "RadiusNeighborsClassifier",  # Object of type KDTree is not JSON serializable
-    "RandomForestClassifier",  #  Object of type DecisionTreeClassifier is not JSON serializable
+    "RandomForestClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
     "RidgeClassifier",  # Object of type LabelBinarizer is not JSON serializable
     "RidgeClassifierCV",  # Object of type LabelBinarizer is not JSON serializable
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
