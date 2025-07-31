@@ -52,6 +52,7 @@ def test_regressor(Regressor, data):
         x_sparse = None
         y_sparse = None
     elif Regressor.__name__ == "PLSRegression":
+        y = y / np.std(y)
         if y.ndim == 1:
             y = y.reshape(-1, 1)
     elif Regressor.__name__ in ["MultiTaskElasticNet", "MultiTaskElasticNetCV", "MultiTaskLasso", "MultiTaskLassoCV"]:
