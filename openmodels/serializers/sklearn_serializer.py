@@ -75,7 +75,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "Birch",  # Object of type _CFNode is not JSON serializable
     "BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
     "FeatureAgglomeration",  # Object of type _ArrayFunctionDispatcher is not JSON serializable
-    "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8'), ('value', '<f8'), ('cluster_size', '<i8')]" not understood
+    "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8')...]" not understood
     # Transformers:
     "ColumnTransformer",  # ColumnTransformer.__init__() missing 1 required positional argument: 'transformers'
     "DictVectorizer",  # Object of type type is not JSON serializable (in params)
@@ -89,12 +89,12 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "KNeighborsTransformer",  # Object of type KDTree is not JSON serializable
     "KernelPCA",  # Object of type KernelCenterer is not JSON serializable
     "LatentDirichletAllocation",  # Object of type RandomState is not JSON serializable
-    "LinearDiscriminantAnalysis",  # ValueError: This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
+    "LinearDiscriminantAnalysis",  # This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
     "LocallyLinearEmbedding",  # Object of type NearestNeighbors is not JSON serializable"
     "LabelBinarizer",  # LabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
     "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
-    "NeighborhoodComponentsAnalysis",  # ValueError: This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
+    "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "OneHotEncoder",  # Object of type type is not JSON serializable
     "OrdinalEncoder",  # Object of type type is not JSON serializable
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
@@ -113,7 +113,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "SimpleImputer",  # Object of type Float64DType is not JSON serializable
     "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
     "SparseCoder",  # SparseCoder.__init__() missing 1 required positional argument: 'dictionary'
-    "SparseRandomProjection",  # ValueError: eps=0.100000 and n_samples=50 lead to a target dimension of 3353 which is larger than the original space with n_features=5
+    "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
     "TfidfTransformer",  # ValueError
