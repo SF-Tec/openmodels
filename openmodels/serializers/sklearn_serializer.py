@@ -305,6 +305,15 @@ class SklearnSerializer(ModelSerializer):
         """
         # Base case: if attr_type is not a list, convert value based on attr_type
         if isinstance(attr_type, str):
+            type_map = {
+                "int": int,
+                "int64": np.int64,
+                "int32": np.int32,
+                "float": float,
+                "float64": np.float64,
+                "str": str,
+                "tuple": tuple,
+            }
             if attr_type == "csr_matrix":
                 # Ensure all sparse matrix components are of correct dtype
                 return csr_matrix(
@@ -317,20 +326,8 @@ class SklearnSerializer(ModelSerializer):
                 )
             elif attr_type == "ndarray":
                 return np.array(value, dtype=attr_dtype or np.float64)
-            elif attr_type == "int":
-                return int(value)
-            elif attr_type == "int64":
-                return np.int64(value)
-            elif attr_type == "int32":
-                return np.int32(value)
-            elif attr_type == "float":
-                return float(value)
-            elif attr_type == "float64":
-                return np.float64(value)
-            elif attr_type == "str":
-                return str(value)
-            elif attr_type == "tuple":
-                return tuple(value)
+            elif attr_type in type_map:
+                return type_map[attr_type](value)
             # Add other types as needed
             return value  # Return as-is if no specific conversion is needed
         # Recursive case: if attr_type is a list, process each element in value

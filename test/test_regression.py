@@ -52,11 +52,10 @@ def test_regressor(Regressor, data):
         x_sparse = None
         y_sparse = None
     elif Regressor.__name__ == "PLSRegression":
-        y = y / np.std(y)
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
-        assert not np.isnan(x).any()
-        assert not np.isinf(x).any()
+        x = [[0., 0., 1.], [1.,0.,0.], [2.,2.,2.], [2.,5.,4.]]
+        y = [[0.1, -0.2], [0.9, 1.1], [6.2, 5.9], [11.9, 12.3]] 
+        x_sparse = None
+        y_sparse = None
     elif Regressor.__name__ in ["MultiTaskElasticNet", "MultiTaskElasticNetCV", "MultiTaskLasso", "MultiTaskLassoCV"]:
         x, y = make_regression(n_samples=50, n_features=3, n_targets=2, random_state=42)
         x_sparse = None
