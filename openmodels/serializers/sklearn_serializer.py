@@ -22,113 +22,113 @@ ALL_ESTIMATORS = {
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
-    "AdaBoostRegressor", #  TypeError: Object of type DecisionTreeRegressor is not JSON serializable
-    "BaggingRegressor", # TypeError: Object of type DecisionTreeRegressor is not JSON serializable
-    "DecisionTreeRegressor", # TypeError: Object of type Tree is not JSON serializable
-    "ExtraTreeRegressor", # TypeError: Object of type Tree is not JSON serializable
-    "ExtraTreesRegressor", # TypeError: Object of type ExtraTreeRegressor is not JSON serializable
-    "GammaRegressor", # TypeError: Object of type HalfGammaLoss is not JSON serializable
-    "GaussianProcessRegressor", # TypeError: Object of type Product is not JSON serializable
-    "GradientBoostingRegressor", # TypeError: Object of type DecisionTreeRegressor is not JSON serializable
-    "HistGradientBoostingRegressor", # TypeError: Object of type HalfSquaredError is not JSON serializable
-    "IsotonicRegression", # TypeError: Object of type interp1d is not JSON serializable
-    "MultiOutputRegressor", # TypeError: MultiOutputRegressor.__init__() missing 1 required positional argument: 'estimator'
-    "PoissonRegressor", # TypeError: Object of type HalfPoissonLoss is not JSON serializable
-    "RandomForestRegressor", # TypeError: Object of type DecisionTreeRegressor is not JSON serializable
-    "RANSACRegressor", # TypeError: Object of type LinearRegression is not JSON serializable
-    "RegressorChain", # TypeError: _BaseChain.__init__() missing 1 required positional argument: 'base_estimator'
-    "StackingRegressor", # TypeError: StackingRegressor.__init__() missing 1 required positional argument: 'estimators'
-    "TransformedTargetRegressor", # TypeError: Object of type LinearRegression is not JSON serializable
-    "DecisionTreeClassifier", # TypeError: Object of type _Tree is not JSON serializable
-    "TweedieRegressor", # TypeError: Object of type HalfTweedieLossIdentity is not JSON serializable
-    "VotingRegressor", # TypeError: VotingRegressor.__init__() missing 1 required positional argument: 'estimators'
+    "AdaBoostRegressor",  #  TypeError: Object of type DecisionTreeRegressor is not JSON serializable
+    "BaggingRegressor",  # TypeError: Object of type DecisionTreeRegressor is not JSON serializable
+    "DecisionTreeRegressor",  # TypeError: Object of type Tree is not JSON serializable
+    "ExtraTreeRegressor",  # TypeError: Object of type Tree is not JSON serializable
+    "ExtraTreesRegressor",  # TypeError: Object of type ExtraTreeRegressor is not JSON serializable
+    "GammaRegressor",  # TypeError: Object of type HalfGammaLoss is not JSON serializable
+    "GaussianProcessRegressor",  # TypeError: Object of type Product is not JSON serializable
+    "GradientBoostingRegressor",  # TypeError: Object of type DecisionTreeRegressor is not JSON serializable
+    "HistGradientBoostingRegressor",  # TypeError: Object of type HalfSquaredError is not JSON serializable
+    "IsotonicRegression",  # TypeError: Object of type interp1d is not JSON serializable
+    "MultiOutputRegressor",  # TypeError: MultiOutputRegressor.__init__() missing 1 required positional argument: 'estimator'
+    "PoissonRegressor",  # TypeError: Object of type HalfPoissonLoss is not JSON serializable
+    "RandomForestRegressor",  # TypeError: Object of type DecisionTreeRegressor is not JSON serializable
+    "RANSACRegressor",  # TypeError: Object of type LinearRegression is not JSON serializable
+    "RegressorChain",  # TypeError: _BaseChain.__init__() missing 1 required positional argument: 'base_estimator'
+    "StackingRegressor",  # TypeError: StackingRegressor.__init__() missing 1 required positional argument: 'estimators'
+    "TransformedTargetRegressor",  # TypeError: Object of type LinearRegression is not JSON serializable
+    "DecisionTreeClassifier",  # TypeError: Object of type _Tree is not JSON serializable
+    "TweedieRegressor",  # TypeError: Object of type HalfTweedieLossIdentity is not JSON serializable
+    "VotingRegressor",  # TypeError: VotingRegressor.__init__() missing 1 required positional argument: 'estimators'
     # Classifiers:
-    "AdaBoostClassifier", # TypeError: Object of type DecisionTreeClassifier is not JSON serializable
-    "BaggingClassifier", # TypeError: Object of type DecisionTreeClassifier is not JSON serializable
-    "CalibratedClassifierCV", # TypeError: Object of type _CalibratedClassifier is not JSON serializable
-    "ClassifierChain", # TypeError: ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
-    "DecisionTreeClassifier", # TypeError: Object of type _Tree is not JSON serializable
-    "ExtraTreeClassifier", # TypeError: Object of type _Tree is not JSON serializable
-    "ExtraTreesClassifier", # TypeError: Object of type ExtraTreeClassifier is not JSON serializable
-    "FixedThresholdClassifier", # TypeError: FixedThresholdClassifier.__init__() missing 1 required positional argument: 'estimator'
-    "GaussianProcessClassifier", # TypeError: Object of type OneVsRestClassifier is not JSON serializable
-    "GradientBoostingClassifier", # TypeError: Object of type DecisionTreeRegressor is not JSON serializable
-    "HistGradientBoostingClassifier", # TypeError: Object of type TreePredictor is not JSON serializable
-    "KNeighborsClassifier", # TypeError: Object of type KDTree is not JSON serializable
-    "MLPClassifier", # TypeError: Object of type LabelBinarizer is not JSON serializable
-    "MultiOutputClassifier", # TypeError: MultiOutputClassifier.__init__() missing 1 required positional argument: 'estimator'
-    "OneVsOneClassifier", # TypeError: OneVsOneClassifier.__init__() missing 1 required positional argument: 'estimator'
-    "OneVsRestClassifier", # TypeError: OneVsOneClassifier.__init__() missing 1 required positional argument: 'estimator'
-    "OutputCodeClassifier", # TypeError: OneVsOneClassifier.__init__() missing 1 required positional argument: 'estimator'
-    "PassiveAggressiveClassifier", # TypeError: Object of type Hinge is not JSON serializable
-    "Perceptron", # TypeError: Object of type Hinge is not JSON serializable
-    "RadiusNeighborsClassifier", # TypeError: Object of type KDTree is not JSON serializable
-    "RandomForestClassifier", #  TypeError: Object of type DecisionTreeClassifier is not JSON serializable
-    "RidgeClassifier", # TypeError: Object of type LabelBinarizer is not JSON serializable
-    "RidgeClassifierCV", # TypeError: Object of type LabelBinarizer is not JSON serializable
-    "SGDClassifier", # TypeError: Object of type Hinge is not JSON serializable
-    "SelfTrainingClassifier", # ValueError: You must pass an estimator to SelfTrainingClassifier. Use `estimator`.
-    "StackingClassifier", # TypeError: StackingClassifier.__init__() missing 1 required positional argument: 'estimators'
-    "TunedThresholdClassifierCV", # TypeError: TunedThresholdClassifierCV.__init__() missing 1 required positional argument: 'estimator'
-    "VotingClassifier", # TypeError: VotingClassifier.__init__() missing 1 required positional argument: 'estimators'
+    "AdaBoostClassifier",  # TypeError: Object of type DecisionTreeClassifier is not JSON serializable
+    "BaggingClassifier",  # TypeError: Object of type DecisionTreeClassifier is not JSON serializable
+    "CalibratedClassifierCV",  # TypeError: Object of type _CalibratedClassifier is not JSON serializable
+    "ClassifierChain",  # TypeError: ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
+    "DecisionTreeClassifier",  # TypeError: Object of type _Tree is not JSON serializable
+    "ExtraTreeClassifier",  # TypeError: Object of type _Tree is not JSON serializable
+    "ExtraTreesClassifier",  # TypeError: Object of type ExtraTreeClassifier is not JSON serializable
+    "FixedThresholdClassifier",  # TypeError: FixedThresholdClassifier.__init__() missing 1 required positional argument: 'estimator'
+    "GaussianProcessClassifier",  # TypeError: Object of type OneVsRestClassifier is not JSON serializable
+    "GradientBoostingClassifier",  # TypeError: Object of type DecisionTreeRegressor is not JSON serializable
+    "HistGradientBoostingClassifier",  # TypeError: Object of type TreePredictor is not JSON serializable
+    "KNeighborsClassifier",  # TypeError: Object of type KDTree is not JSON serializable
+    "MLPClassifier",  # TypeError: Object of type LabelBinarizer is not JSON serializable
+    "MultiOutputClassifier",  # TypeError: MultiOutputClassifier.__init__() missing 1 required positional argument: 'estimator'
+    "OneVsOneClassifier",  # TypeError: OneVsOneClassifier.__init__() missing 1 required positional argument: 'estimator'
+    "OneVsRestClassifier",  # TypeError: OneVsOneClassifier.__init__() missing 1 required positional argument: 'estimator'
+    "OutputCodeClassifier",  # TypeError: OneVsOneClassifier.__init__() missing 1 required positional argument: 'estimator'
+    "PassiveAggressiveClassifier",  # TypeError: Object of type Hinge is not JSON serializable
+    "Perceptron",  # TypeError: Object of type Hinge is not JSON serializable
+    "RadiusNeighborsClassifier",  # TypeError: Object of type KDTree is not JSON serializable
+    "RandomForestClassifier",  #  TypeError: Object of type DecisionTreeClassifier is not JSON serializable
+    "RidgeClassifier",  # TypeError: Object of type LabelBinarizer is not JSON serializable
+    "RidgeClassifierCV",  # TypeError: Object of type LabelBinarizer is not JSON serializable
+    "SGDClassifier",  # TypeError: Object of type Hinge is not JSON serializable
+    "SelfTrainingClassifier",  # ValueError: You must pass an estimator to SelfTrainingClassifier. Use `estimator`.
+    "StackingClassifier",  # TypeError: StackingClassifier.__init__() missing 1 required positional argument: 'estimators'
+    "TunedThresholdClassifierCV",  # TypeError: TunedThresholdClassifierCV.__init__() missing 1 required positional argument: 'estimator'
+    "VotingClassifier",  # TypeError: VotingClassifier.__init__() missing 1 required positional argument: 'estimators'
     # Clusters:
-    "Birch", # TypeError: Object of type _CFNode is not JSON serializable
-    "BisectingKMeans", # TypeError: Object of type _BisectingTree is not JSON serializable
-    "FeatureAgglomeration", # TypeError: Object of type _ArrayFunctionDispatcher is not JSON serializable
-    "HDBSCAN", # TypeError: data type "[('left_node', '<i8'), ('right_node', '<i8'), ('value', '<f8'), ('cluster_size', '<i8')]" not understood
+    "Birch",  # TypeError: Object of type _CFNode is not JSON serializable
+    "BisectingKMeans",  # TypeError: Object of type _BisectingTree is not JSON serializable
+    "FeatureAgglomeration",  # TypeError: Object of type _ArrayFunctionDispatcher is not JSON serializable
+    "HDBSCAN",  # TypeError: data type "[('left_node', '<i8'), ('right_node', '<i8'), ('value', '<f8'), ('cluster_size', '<i8')]" not understood
     # Transformers:
-    "ColumnTransformer", # TypeError: ColumnTransformer.__init__() missing 1 required positional argument: 'transformers'
-    "DictVectorizer", # TypeError: Object of type type is not JSON serializable (in params)
-    "FeatureHasher", # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
-    "FeatureUnion", # TypeError: FeatureUnion.__init__() missing 1 required positional argument: 'transformer_list'
-    "GaussianRandomProjection", # TypeError: Object of type RandomState is not JSON serializable
-    "GenericUnivariateSelect", # TypeError: Object of type function is not JSON serializable
-    "HashingVectorizer", # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
-    "Isomap", # TypeError: Object of type KernelPCA is not JSON serializable
-    "KBinsDiscretizer", # TypeError: Object of type OneHotEncoder is not JSON serializable
-    "KNeighborsTransformer", # TypeError: Object of type KDTree is not JSON serializable
-    "KernelPCA", # TypeError: Object of type KernelCenterer is not JSON serializable
-    "LatentDirichletAllocation", # TypeError: Object of type RandomState is not JSON serializable
-    "LinearDiscriminantAnalysis", # ValueError: This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
-    "LocallyLinearEmbedding", # TypeError: Object of type NearestNeighbors is not JSON serializable"
-    "LabelBinarizer", # TypeError: LabelBinarizer.fit() takes 2 positional arguments but 3 were given
-    "LabelEncoder", # TypeError: LabelEncoder.fit() takes 2 positional arguments but 3 were given
-    "MultiLabelBinarizer", # TypeError: MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
-    "NeighborhoodComponentsAnalysis", # ValueError: This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
-    "OneHotEncoder", # TypeError: Object of type type is not JSON serializable
-    "OrdinalEncoder", # TypeError: Object of type type is not JSON serializable
-    "PatchExtractor", # ValueError: not enough values to unpack (expected 3, got 2)
-    "PowerTransformer", # TypeError: Object of type StandardScaler is not JSON serializable
-    "RFE", # TypeError: RFE.__init__() missing 1 required positional argument: 'estimator'
-    "RFECV", # TypeError: RFECV.__init__() missing 1 required positional argument: 'estimator'
-    "RadiusNeighborsTransformer", # TypeError: Object of type KDTree is not JSON serializable
-    "RandomTreesEmbedding", # TypeError: Object of type ExtraTreeRegressor is not JSON serializable
-    "SelectFdr", # TypeError: Object of type function is not JSON serializable
-    "SelectFpr", # TypeError: Object of type function is not JSON serializable
-    "SelectFromModel", # TypeError: SelectFromModel.__init__() missing 1 required positional argument: 'estimator'
-    "SelectFwe", # TypeError: Object of type function is not JSON serializable
-    "SelectKBest", # TypeError: Object of type function is not JSON serializable
-    "SelectPercentile", # TypeError: Object of type function is not JSON serializable
-    "SequentialFeatureSelector", # TypeError: SequentialFeatureSelector.__init__() missing 1 required positional argument: 'estimator'
-    "SimpleImputer", # TypeError: Object of type Float64DType is not JSON serializable
-    "SkewedChi2Sampler", # ValueError: X may not contain entries smaller than -skewedness.
-    "SparseCoder", # TypeError: SparseCoder.__init__() missing 1 required positional argument: 'dictionary'
-    "SparseRandomProjection", # ValueError: eps=0.100000 and n_samples=50 lead to a target dimension of 3353 which is larger than the original space with n_features=5
-    "SplineTransformer", # TypeError: Object of type BSpline is not JSON serializable
-    "TargetEncoder", # ValueError: Expected array-like (array or non-string sequence), got None
-    "TfidfTransformer", # ValueError
+    "ColumnTransformer",  # TypeError: ColumnTransformer.__init__() missing 1 required positional argument: 'transformers'
+    "DictVectorizer",  # TypeError: Object of type type is not JSON serializable (in params)
+    "FeatureHasher",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
+    "FeatureUnion",  # TypeError: FeatureUnion.__init__() missing 1 required positional argument: 'transformer_list'
+    "GaussianRandomProjection",  # TypeError: Object of type RandomState is not JSON serializable
+    "GenericUnivariateSelect",  # TypeError: Object of type function is not JSON serializable
+    "HashingVectorizer",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
+    "Isomap",  # TypeError: Object of type KernelPCA is not JSON serializable
+    "KBinsDiscretizer",  # TypeError: Object of type OneHotEncoder is not JSON serializable
+    "KNeighborsTransformer",  # TypeError: Object of type KDTree is not JSON serializable
+    "KernelPCA",  # TypeError: Object of type KernelCenterer is not JSON serializable
+    "LatentDirichletAllocation",  # TypeError: Object of type RandomState is not JSON serializable
+    "LinearDiscriminantAnalysis",  # ValueError: This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
+    "LocallyLinearEmbedding",  # TypeError: Object of type NearestNeighbors is not JSON serializable"
+    "LabelBinarizer",  # TypeError: LabelBinarizer.fit() takes 2 positional arguments but 3 were given
+    "LabelEncoder",  # TypeError: LabelEncoder.fit() takes 2 positional arguments but 3 were given
+    "MultiLabelBinarizer",  # TypeError: MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
+    "NeighborhoodComponentsAnalysis",  # ValueError: This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
+    "OneHotEncoder",  # TypeError: Object of type type is not JSON serializable
+    "OrdinalEncoder",  # TypeError: Object of type type is not JSON serializable
+    "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
+    "PowerTransformer",  # TypeError: Object of type StandardScaler is not JSON serializable
+    "RFE",  # TypeError: RFE.__init__() missing 1 required positional argument: 'estimator'
+    "RFECV",  # TypeError: RFECV.__init__() missing 1 required positional argument: 'estimator'
+    "RadiusNeighborsTransformer",  # TypeError: Object of type KDTree is not JSON serializable
+    "RandomTreesEmbedding",  # TypeError: Object of type ExtraTreeRegressor is not JSON serializable
+    "SelectFdr",  # TypeError: Object of type function is not JSON serializable
+    "SelectFpr",  # TypeError: Object of type function is not JSON serializable
+    "SelectFromModel",  # TypeError: SelectFromModel.__init__() missing 1 required positional argument: 'estimator'
+    "SelectFwe",  # TypeError: Object of type function is not JSON serializable
+    "SelectKBest",  # TypeError: Object of type function is not JSON serializable
+    "SelectPercentile",  # TypeError: Object of type function is not JSON serializable
+    "SequentialFeatureSelector",  # TypeError: SequentialFeatureSelector.__init__() missing 1 required positional argument: 'estimator'
+    "SimpleImputer",  # TypeError: Object of type Float64DType is not JSON serializable
+    "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
+    "SparseCoder",  # TypeError: SparseCoder.__init__() missing 1 required positional argument: 'dictionary'
+    "SparseRandomProjection",  # ValueError: eps=0.100000 and n_samples=50 lead to a target dimension of 3353 which is larger than the original space with n_features=5
+    "SplineTransformer",  # TypeError: Object of type BSpline is not JSON serializable
+    "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
+    "TfidfTransformer",  # ValueError
     # Others:
-    "BayesianGaussianMixture", # TypeError: Object of type ndarray is not JSON serializable
-    "CountVectorizer", # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
-    "FrozenEstimator", # TypeError: FrozenEstimator.__init__() missing 1 required positional argument: 'estimator'
-    "GridSearchCV", # TypeError: GridSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_grid'
-    "IsolationForest", # TypeError: Object of type ExtraTreeRegressor is not JSON serializable
-    "KernelDensity", # TypeError: Object of type KDTree is not JSON serializable
-    "LocalOutlierFactor", # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
-    "Pipeline", # TypeError: Pipeline.__init__() missing 1 required positional argument: 'steps'
-    "RandomizedSearchCV", # TypeError: RandomizedSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_distributions'
-    "SGDOneClassSVM", # TypeError: Object of type Hinge is not JSON serializable
-    "TfidfVectorizer", # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
+    "BayesianGaussianMixture",  # TypeError: Object of type ndarray is not JSON serializable
+    "CountVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
+    "FrozenEstimator",  # TypeError: FrozenEstimator.__init__() missing 1 required positional argument: 'estimator'
+    "GridSearchCV",  # TypeError: GridSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_grid'
+    "IsolationForest",  # TypeError: Object of type ExtraTreeRegressor is not JSON serializable
+    "KernelDensity",  # TypeError: Object of type KDTree is not JSON serializable
+    "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
+    "Pipeline",  # TypeError: Pipeline.__init__() missing 1 required positional argument: 'steps'
+    "RandomizedSearchCV",  # TypeError: RandomizedSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_distributions'
+    "SGDOneClassSVM",  # TypeError: Object of type Hinge is not JSON serializable
+    "TfidfVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
 ]
 
 # Dictionary of attribute exceptions
