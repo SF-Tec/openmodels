@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Tuple, Type, Optional
 import numpy as np
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 
-from sklearn.tree import _tree
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
@@ -233,7 +232,7 @@ class SklearnSerializer(ModelSerializer):
         ]
 
     @staticmethod
-    def _serialize_tree(tree: _tree.Tree) -> Dict[str, Any]:
+    def _serialize_tree(tree: Tree) -> Dict[str, Any]:
         """
         Serializes a sklearn.tree._tree.Tree object to a dictionary.
 
@@ -256,7 +255,7 @@ class SklearnSerializer(ModelSerializer):
         }
 
     @staticmethod
-    def _deserialize_tree(tree_data: Dict[str, Any]) -> _tree.Tree:
+    def _deserialize_tree(tree_data: Dict[str, Any]) -> Tree:
         """
         Deserializes a dictionary representation of a tree back to a sklearn.tree._tree.Tree object.
         """
@@ -298,7 +297,7 @@ class SklearnSerializer(ModelSerializer):
         Any
             The serializable representation of the value.
         """
-        if isinstance(value, (_tree.Tree)):
+        if isinstance(value, (Tree)):
             # If the value is a Tree object, serialize it to a dictionary
             return SklearnSerializer._serialize_tree(value)
 
