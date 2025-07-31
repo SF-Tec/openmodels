@@ -17,7 +17,7 @@ def data():
         n_samples=50,
         n_features=3,
         n_informative=3,
-        random_state=0,
+        random_state=42,
         shuffle=False,
     )
 
