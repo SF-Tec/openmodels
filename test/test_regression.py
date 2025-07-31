@@ -55,6 +55,8 @@ def test_regressor(Regressor, data):
         y = y / np.std(y)
         if y.ndim == 1:
             y = y.reshape(-1, 1)
+        assert not np.isnan(x).any()
+        assert not np.isinf(x).any()
     elif Regressor.__name__ in ["MultiTaskElasticNet", "MultiTaskElasticNetCV", "MultiTaskLasso", "MultiTaskLassoCV"]:
         x, y = make_regression(n_samples=50, n_features=3, n_targets=2, random_state=42)
         x_sparse = None
