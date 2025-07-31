@@ -592,7 +592,7 @@ class SklearnSerializer(ModelSerializer):
             # Get dtype if available
             attr_dtype = data.get("attribute_dtypes", {}).get(attribute)
             # Handle tree_ separately
-            if attribute == "tree_":
+            if attr_type == "Tree":
                 model.tree_ = SklearnSerializer._deserialize_tree(value)
             else:
                 # Pass both value and attr_type to _convert_to_sklearn_types
