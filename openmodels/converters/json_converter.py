@@ -33,7 +33,6 @@ class JSONConverter(FormatConverter):
         str
             The JSON string representation of the data.
         """
-        print(f"Serializing data to JSON: {data}")
         return json.dumps(data)
 
     @staticmethod
