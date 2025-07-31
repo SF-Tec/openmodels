@@ -13,7 +13,7 @@ from sklearn.tree import _tree
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
-from sklearn.utils.discovery import all_estimators 
+from sklearn.utils.discovery import all_estimators
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
 from openmodels.protocols import ModelSerializer
@@ -246,14 +246,13 @@ class SklearnSerializer(ModelSerializer):
         state = tree.__getstate__()
 
         return {
-            'n_features': tree.n_features,
-            'n_outputs': tree.n_outputs,
-            'n_classes': tree.n_classes.tolist(),
-            'state': {
-                k: (v.tolist() if hasattr(v, 'tolist') else v)
-                for k, v in state.items()
+            "n_features": tree.n_features,
+            "n_outputs": tree.n_outputs,
+            "n_classes": tree.n_classes.tolist(),
+            "state": {
+                k: (v.tolist() if hasattr(v, "tolist") else v) for k, v in state.items()
             },
-            'nodes_dtype': [list(t) for t in state['nodes'].dtype.descr],  # for JSON
+            "nodes_dtype": [list(t) for t in state["nodes"].dtype.descr],  # for JSON
         }
 
     @staticmethod
@@ -262,26 +261,28 @@ class SklearnSerializer(ModelSerializer):
         Deserializes a dictionary representation of a tree back to a sklearn.tree._tree.Tree object.
         """
         tree = Tree(
-            tree_data['n_features'],
-            np.array(tree_data['n_classes'], dtype=np.intp),
-            tree_data['n_outputs']
+            tree_data["n_features"],
+            np.array(tree_data["n_classes"], dtype=np.intp),
+            tree_data["n_outputs"],
         )
 
         state = {}
-        for key, value in tree_data['state'].items():
-            if key == 'nodes':
+        for key, value in tree_data["state"].items():
+            if key == "nodes":
                 # Restore dtype
-                nodes_dtype_descr = [tuple(field) for field in tree_data['nodes_dtype'] if field[0] != '']
+                nodes_dtype_descr = [
+                    tuple(field) for field in tree_data["nodes_dtype"] if field[0] != ""
+                ]
                 nodes_dtype = np.dtype(nodes_dtype_descr)
                 if isinstance(value, list) and isinstance(value[0], list):
                     value = [tuple(row) for row in value]
-                state['nodes'] = np.array(value, dtype=nodes_dtype)
+                state["nodes"] = np.array(value, dtype=nodes_dtype)
             else:
                 state[key] = np.array(value)
 
         tree.__setstate__(state)
         return tree
-    
+
     @staticmethod
     def _convert_to_serializable_types(value: Any) -> Any:
         """
@@ -300,7 +301,7 @@ class SklearnSerializer(ModelSerializer):
         if isinstance(value, (_tree.Tree)):
             # If the value is a Tree object, serialize it to a dictionary
             return SklearnSerializer._serialize_tree(value)
-        
+
         if isinstance(value, dict):
             # Scikit-learn estimators (e.g., LogisticRegressionCV) may use non-string types
             # (such as np.int64 or float) as dictionary keys for attributes like `coefs_paths_`.
@@ -591,10 +592,10 @@ class SklearnSerializer(ModelSerializer):
             # Get dtype if available
             attr_dtype = data.get("attribute_dtypes", {}).get(attribute)
             # Skip feature_importances_ if it's derived (can be recomputed)
-            if attribute == 'feature_importances_':
+            if attribute == "feature_importances_":
                 continue
             # Handle tree_ separately
-            if attribute == 'tree_':
+            if attribute == "tree_":
                 model.tree_ = SklearnSerializer._deserialize_tree(value)
                 continue
             else:
