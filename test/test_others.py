@@ -3,10 +3,16 @@ from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_classification
 from openmodels.test_helpers import run_test_model
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
+from test.test_classification import CLASSIFIERS
+from test.test_clustering import CLUSTERS
+from test.test_regression import REGRESSORS
+from test.test_transformation import TRANSFORMERS
 
-# Get all classifier estimators, filtering out not supported classifiers
-CLASSIFIERS = [cls for name, cls in all_estimators(type_filter="classifier")
-        if name not in NOT_SUPPORTED_ESTIMATORS]
+# Get all other estimators, filtering out not supported
+OTHERS = [cls for name, cls in all_estimators()
+        if cls not in CLASSIFIERS + CLUSTERS + REGRESSORS + TRANSFORMERS
+        and name not in NOT_SUPPORTED_ESTIMATORS
+        ]
 
 # Define constants
 N_SAMPLES = 50
@@ -39,16 +45,11 @@ def data():
 
     return x, y
 
-@pytest.mark.parametrize("Classifier", CLASSIFIERS)
-def test_classifier(Classifier, data):
+@pytest.mark.parametrize("Others", OTHERS)
+def test_others(Others, data):
     x, y = data
-    classifier = Classifier()
-
-    abs = False
-
-    if Classifier.__name__ in ["CategoricalNB", "ComplementNB", "MultinomialNB"]:
-        abs = True
+    others = Others()
     
     # Run the test model
-    run_test_model(classifier, x, y, None, None, f"{Classifier.__name__.lower()}.json", abs)
+    run_test_model(others, x, y, None, None, f"{Others.__name__.lower()}.json")
  

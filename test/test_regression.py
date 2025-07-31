@@ -1,15 +1,15 @@
-import random
 import pytest
-from sklearn.cross_decomposition import PLSRegression
+import random
+import numpy as np
+from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_regression
 from sklearn.feature_extraction import FeatureHasher
-from sklearn.linear_model import LinearRegression, Lasso, Ridge
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.neural_network import MLPRegressor
-from sklearn.svm import SVR
-from openmodels.test_helpers import run_test_model, ensure_correct_sparse_format
+from openmodels.test_helpers import run_test_model
+from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
 
+# Get all regressor estimators, filtering out not supported regressors
+REGRESSORS = [cls for name, cls in all_estimators(type_filter="regressor")
+    if name not in NOT_SUPPORTED_ESTIMATORS]
 
 @pytest.fixture(scope="module")
 def data():
@@ -37,80 +37,36 @@ def data():
     return x, y, x_sparse, y_sparse
 
 
-# Test each model
-def test_linear_regression(data):
-    x, y, x_sparse, y_sparse = data
-    run_test_model(
-        LinearRegression(), x, y, x_sparse, y_sparse, "linear-regression.json"
-    )
+@pytest.mark.parametrize("Regressor", REGRESSORS)
+def test_regressor(Regressor, data):
+    x, y, x_sparse, y_sparse  = data
 
+    args = {}
+    # Handle specific regressors that require special treatment
+    if Regressor.__name__ in ["CCA", "PLSCanonical"]:
+        args["n_components"] = 1
+    elif Regressor.__name__ in ["GammaRegressor", "PoissonRegressor"]:
+        y = np.abs(y) + 1e-3
+    elif Regressor.__name__ == "IsotonicRegression":
+        x, y = make_regression(n_samples=10, n_features=1, random_state=41)
+        x_sparse = None
+        y_sparse = None
+    elif Regressor.__name__ == "PLSRegression":
+        if y.ndim == 1:
+            y = y.reshape(-1, 1)
+    elif Regressor.__name__ in ["MultiTaskElasticNet", "MultiTaskElasticNetCV", "MultiTaskLasso", "MultiTaskLassoCV"]:
+        x, y = make_regression(n_samples=50, n_features=3, n_targets=2, random_state=42)
+        x_sparse = None
+        y_sparse = None
+    
+    regressor = Regressor(**args)
 
-def test_lasso_regression(data):
-    x, y, x_sparse, y_sparse = data
-    run_test_model(Lasso(alpha=0.1), x, y, x_sparse, y_sparse, "lasso-regression.json")
-
-
-def test_ridge_regression(data):
-    x, y, x_sparse, y_sparse = data
-    run_test_model(Ridge(alpha=0.5), x, y, x_sparse, y_sparse, "ridge-regression.json")
-
-
-def test_svr(data):
-    x, y, x_sparse, y_sparse = data
-    # Ensure sparse data is properly formatted before testing
-    x_sparse = ensure_correct_sparse_format(x_sparse)
-
-    run_test_model(
-        SVR(gamma="scale", C=1.0, epsilon=0.2), x, y, x_sparse, y_sparse, "svr.json"
-    )
-
-
-@pytest.mark.skip(reason="Feature not ready")
-def test_decision_tree_regression(data):
-    x, y, x_sparse, y_sparse = data
-    run_test_model(
-        DecisionTreeRegressor(),
-        x,
-        y,
-        x_sparse,
-        y_sparse,
-        "decision-tree-regression.json",
-    )
-
-
-@pytest.mark.skip(reason="Feature not ready")
-def test_gradient_boosting_regression(data):
-    x, y, x_sparse, y_sparse = data
-    run_test_model(
-        GradientBoostingRegressor(),
-        x,
-        y,
-        x_sparse,
-        y_sparse,
-        "gradient-boosting-regression.json",
-    )
-
-
-@pytest.mark.skip(reason="Feature not ready")
-def test_random_forest_regression(data):
-    x, y, x_sparse, y_sparse = data
-    run_test_model(
-        RandomForestRegressor(max_depth=2, random_state=0, n_estimators=100),
-        x,
-        y,
-        x_sparse,
-        y_sparse,
-        "random-forest-regression.json",
-    )
-
-
-def test_mlp_regression(data):
-    x, y, x_sparse, y_sparse = data
-    run_test_model(MLPRegressor(), x, y, x_sparse, y_sparse, "mlp-regression.json")
-
-
-def test_pls_regression(data):
-    x, y, _, _ = data
-    run_test_model(
-        PLSRegression(n_components=2), x, y, None, None, "pls-regression.json"  # type: ignore
-    )
+    try:
+        # Try with sparse input
+        run_test_model(regressor, x, y, x_sparse, y_sparse, f"{Regressor.__name__.lower()}.json")
+    except TypeError as e:
+        if "Sparse data was passed" in str(e):
+            # Retry with dense input
+            run_test_model(regressor, x, y, x_sparse.toarray(), y_sparse, f"{Regressor.__name__.lower()}.json")
+        else:
+            raise
