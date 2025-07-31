@@ -477,10 +477,6 @@ class SklearnSerializer(ModelSerializer):
         }
 
         attribute_types_map = dict(zip(filtered_attribute_keys, attribute_types))
-        # Print debug information
-        # print("--------", model.__class__.__name__, "--------")
-        # print(attribute_types_map)
-        # print(attribute_dtypes_map)
 
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
