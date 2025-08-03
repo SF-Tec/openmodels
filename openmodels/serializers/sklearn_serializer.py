@@ -24,7 +24,7 @@ ALL_ESTIMATORS = {
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
     #"AdaBoostRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
-    "BaggingRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
+    #"BaggingRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
     "ExtraTreesRegressor",  # Object of type ExtraTreeRegressor is not JSON serializable
     "GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
@@ -382,6 +382,7 @@ class SklearnSerializer(ModelSerializer):
                 "float64": np.float64,
                 "str": str,
                 "tuple": tuple,
+                "ndarray": lambda x: np.array(x, dtype=attr_dtype if attr_dtype else None),
             }
             if attr_type == "csr_matrix":
                 # Ensure all sparse matrix components are of correct dtype
@@ -393,8 +394,6 @@ class SklearnSerializer(ModelSerializer):
                     ),
                     shape=tuple(value["shape"]),
                 )
-            elif attr_type == "ndarray":
-                return np.array(value, dtype=attr_dtype or np.float64)
             elif attr_type in type_map:
                 return type_map[attr_type](value)
             elif attr_type in ALL_ESTIMATORS:
@@ -481,6 +480,13 @@ class SklearnSerializer(ModelSerializer):
         """
         if isinstance(value, np.ndarray):
             return str(value.dtype)  # Get the actual numpy dtype
+        elif isinstance(value, (list, tuple)) and value:
+            # If it's a list/tuple that will become an ndarray, check its elements
+            first_elem = value[0]
+            if isinstance(first_elem, (int, np.integer)):
+                return "int32"  # Use int32 for integer lists
+            elif isinstance(first_elem, (float, np.floating)):
+                return "float64"  # Use float64 for float lists
         return ""
 
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
