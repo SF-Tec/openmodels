@@ -23,9 +23,6 @@ ALL_ESTIMATORS = {
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
-    #"AdaBoostRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
-    #"BaggingRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
-    #"ExtraTreesRegressor",  # Object of type ExtraTreeRegressor is not JSON serializable
     "GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
         # https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/_loss/loss.py
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
@@ -34,19 +31,13 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "IsotonicRegression",  # Object of type interp1d is not JSON serializable
     "MultiOutputRegressor",  # MultiOutputRegressor.__init__() missing 1 required positional argument: 'estimator'
     "PoissonRegressor",  # Object of type HalfPoissonLoss is not JSON serializable
-    #"RandomForestRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
-    #"RANSACRegressor",  # Object of type LinearRegression is not JSON serializable
     "RegressorChain",  # _BaseChain.__init__() missing 1 required positional argument: 'base_estimator'
     "StackingRegressor",  # StackingRegressor.__init__() missing 1 required positional argument: 'estimators'
-    #"TransformedTargetRegressor",  # Object of type LinearRegression is not JSON serializable
     "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
     "VotingRegressor",  # VotingRegressor.__init__() missing 1 required positional argument: 'estimators'
     # Classifiers:
-    #"AdaBoostClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
-    #"BaggingClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
     "ClassifierChain",  # ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
-    #"ExtraTreesClassifier",  # Object of type ExtraTreeClassifier is not JSON serializable
     "FixedThresholdClassifier",  # FixedThresholdClassifier.__init__() missing 1 required positional argument: 'estimator'
     "GaussianProcessClassifier",  # Object of type OneVsRestClassifier is not JSON serializable
     "GradientBoostingClassifier",  # Object of type RandomState is not JSON serializable
@@ -60,8 +51,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
     "Perceptron",  # Object of type Hinge is not JSON serializable
     "RadiusNeighborsClassifier",  # Object of type KDTree is not JSON serializable
-    #"RandomForestClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
-    "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
+     "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "RidgeClassifierCV",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
     "SelfTrainingClassifier",  # ValueError: You must pass an estimator to SelfTrainingClassifier. Use `estimator`.
@@ -84,7 +74,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "Isomap",  # Object of type KDTree is not JSON serializable
     "KBinsDiscretizer",  # Object of type Float64DType is not JSON serializable
     "KNeighborsTransformer",  # Object of type KDTree is not JSON serializable
-    #"KernelPCA",  # Object of type KernelCenterer is not JSON serializable
     "LatentDirichletAllocation",  # Object of type RandomState is not JSON serializable
     "LinearDiscriminantAnalysis",  # This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
     "LocallyLinearEmbedding",  # Object of type NearestNeighbors is not JSON serializable"
@@ -95,7 +84,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "OneHotEncoder",  # Object of type type is not JSON serializable
     "OrdinalEncoder",  # Object of type type is not JSON serializable
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    #"PowerTransformer",  # Object of type StandardScaler is not JSON serializable
     "RFE",  # RFE.__init__() missing 1 required positional argument: 'estimator'
     "RFECV",  # RFECV.__init__() missing 1 required positional argument: 'estimator'
     "RadiusNeighborsTransformer",  # Object of type KDTree is not JSON serializable
