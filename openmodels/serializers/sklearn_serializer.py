@@ -24,7 +24,7 @@ ALL_ESTIMATORS = {
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
     "GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
-        # https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/_loss/loss.py
+    # https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/_loss/loss.py
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
     "GradientBoostingRegressor",  # Object of type RandomState is not JSON serializable
     "HistGradientBoostingRegressor",  # Object of type HalfSquaredError is not JSON serializable
@@ -51,7 +51,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
     "Perceptron",  # Object of type Hinge is not JSON serializable
     "RadiusNeighborsClassifier",  # Object of type KDTree is not JSON serializable
-     "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
+    "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "RidgeClassifierCV",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
     "SelfTrainingClassifier",  # ValueError: You must pass an estimator to SelfTrainingClassifier. Use `estimator`.
@@ -181,9 +181,14 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "PolynomialFeatures": ["_max_degree", "_n_out_full", "_min_degree"],
     "PLSSVD": ["_x_mean", "_x_std"],
     # Others:
-    "IsolationForest":["_max_features", "_max_samples", "_decision_path_lengths", "_average_path_length_per_tree"],
+    "IsolationForest": [
+        "_max_features",
+        "_max_samples",
+        "_decision_path_lengths",
+        "_average_path_length_per_tree",
+    ],
     "OneClassSVM": ["_sparse", "_n_support", "_probA", "_probB", "_gamma"],
-    "NearestNeighbors":["_fit_method","_tree"]
+    "NearestNeighbors": ["_fit_method", "_tree"],
 }
 
 
@@ -299,9 +304,9 @@ class SklearnSerializer(ModelSerializer):
             except NotFittedError:
                 return {
                     "__template__": value.__class__.__name__,
-                    "params": self._convert_to_serializable_types(value.get_params())
+                    "params": self._convert_to_serializable_types(value.get_params()),
                 }
-        
+
         if isinstance(value, (Tree)):
             # If the value is a Tree object, serialize it to a dictionary
             return SklearnSerializer._serialize_tree(value)
@@ -315,8 +320,7 @@ class SklearnSerializer(ModelSerializer):
             # NOTE: This ensures that LogisticRegressionCV works, but to put back the original
             # types we need to convert the keys back to the original types (done on fit).
             return {
-                str(k): self._convert_to_serializable_types(v)
-                for k, v in value.items()
+                str(k): self._convert_to_serializable_types(v) for k, v in value.items()
             }
         if isinstance(value, (list, tuple)):
             # If the list contains BaseEstimator objects, serialize each one
@@ -326,12 +330,14 @@ class SklearnSerializer(ModelSerializer):
             return SklearnSerializer._array_to_list(value)
         if isinstance(value, (np.ndarray)):
             # Special handling for arrays of estimators
-            if value.dtype == np.dtype('O') and value.size > 0:
+            if value.dtype == np.dtype("O") and value.size > 0:
                 first_elem = value.ravel()[0]
                 if isinstance(first_elem, BaseEstimator):
                     # This is an array of estimators, serialize each one
-                    return [[self._convert_to_serializable_types(est) for est in row] 
-                           for row in value]
+                    return [
+                        [self._convert_to_serializable_types(est) for est in row]
+                        for row in value
+                    ]
             # Regular array handling
             return SklearnSerializer._array_to_list(value)
         if isinstance(value, _csr.csr_matrix):
@@ -354,36 +360,21 @@ class SklearnSerializer(ModelSerializer):
 
         return value
 
-    def _convert_to_sklearn_types(self,
-        value: Any, attr_type: Any = "none", attr_dtype: Optional[str] = None
+    def _convert_to_sklearn_types(
+        self, value: Any, attr_type: Any = "none", attr_dtype: Optional[str] = None
     ) -> Any:
         """
         Convert a JSON-deserialized value to its scikit-learn type.
 
-        Parameters
-        ----------
-        value : Any
-            The JSON-deserialized value.
-        attr_type : str
-            The target type to convert to.
-
-        Returns
-        -------
-        Any
-            The scikit-learn type of the value.
         """
+        # Recursive case: if attr_type is a list, process each element in value
+        if isinstance(attr_type, List) and isinstance(value, List):
+            return [
+                self._convert_to_sklearn_types(v, t, attr_dtype)
+                for v, t in zip(value, attr_type)
+            ]
         # Base case: if attr_type is not a list, convert value based on attr_type
         if isinstance(attr_type, str):
-            type_map = {
-                "int": int,
-                "int64": np.int64,
-                "int32": np.int32,
-                "float": float,
-                "float64": np.float64,
-                "str": str,
-                "tuple": tuple,
-                "ndarray": lambda x: np.array(x, dtype=attr_dtype if attr_dtype else None),
-            }
             if attr_type == "csr_matrix":
                 # Ensure all sparse matrix components are of correct dtype
                 return csr_matrix(
@@ -394,26 +385,30 @@ class SklearnSerializer(ModelSerializer):
                     ),
                     shape=tuple(value["shape"]),
                 )
-            elif attr_type in type_map:
+            type_map = {
+                "int": int,
+                "int64": np.int64,
+                "int32": np.int32,
+                "float": float,
+                "float64": np.float64,
+                "str": str,
+                "tuple": tuple,
+                "ndarray": lambda x: np.array(
+                    x, dtype=attr_dtype if attr_dtype else None
+                ),
+            }
+
+            if attr_type in type_map:
                 return type_map[attr_type](value)
-            elif attr_type in ALL_ESTIMATORS:
+            if attr_type in ALL_ESTIMATORS:
                 # This is an estimator type
                 if isinstance(value, dict):
                     if "__template__" in value:
-                        # This is an unfitted estimator template
                         estimator_class = ALL_ESTIMATORS[value["__template__"]]
                         return estimator_class(**value["params"])
-                    else:
-                        # This is a fully serialized estimator
-                        return self.deserialize(value)
-            # Add other types as needed
+                    return self.deserialize(value)
+
             return value  # Return as-is if no specific conversion is needed
-        # Recursive case: if attr_type is a list, process each element in value
-        elif isinstance(attr_type, List) and isinstance(value, List):
-            return [
-                self._convert_to_sklearn_types(v, t, attr_dtype)
-                for v, t in zip(value, attr_type)
-            ]
 
         return value
 
