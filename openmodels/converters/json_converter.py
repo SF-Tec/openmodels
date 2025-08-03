@@ -33,8 +33,7 @@ class JSONConverter(FormatConverter):
         str
             The JSON string representation of the data.
         """
-        print("Serializing to JSON format")
-        print("Data to serialize:", data)
+     
         if not isinstance(data, dict):
             raise TypeError("Data must be a dictionary.")
         return json.dumps(data)

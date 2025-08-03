@@ -46,10 +46,10 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     #"BaggingClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
     "ClassifierChain",  # ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
-    "ExtraTreesClassifier",  # Object of type ExtraTreeClassifier is not JSON serializable
+    #"ExtraTreesClassifier",  # Object of type ExtraTreeClassifier is not JSON serializable
     "FixedThresholdClassifier",  # FixedThresholdClassifier.__init__() missing 1 required positional argument: 'estimator'
     "GaussianProcessClassifier",  # Object of type OneVsRestClassifier is not JSON serializable
-    "GradientBoostingClassifier",  # Object of type DecisionTreeRegressor is not JSON serializable
+    "GradientBoostingClassifier",  # Object of type RandomState is not JSON serializable
     "HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
     "KNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
@@ -60,9 +60,9 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
     "Perceptron",  # Object of type Hinge is not JSON serializable
     "RadiusNeighborsClassifier",  # Object of type KDTree is not JSON serializable
-    "RandomForestClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
-    "RidgeClassifier",  # Object of type LabelBinarizer is not JSON serializable
-    "RidgeClassifierCV",  # Object of type LabelBinarizer is not JSON serializable
+    #"RandomForestClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
+    "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
+    "RidgeClassifierCV",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
     "SelfTrainingClassifier",  # ValueError: You must pass an estimator to SelfTrainingClassifier. Use `estimator`.
     "StackingClassifier",  # StackingClassifier.__init__() missing 1 required positional argument: 'estimators'
@@ -81,10 +81,10 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "GaussianRandomProjection",  # Object of type RandomState is not JSON serializable
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
     "HashingVectorizer",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
-    "Isomap",  # Object of type KernelPCA is not JSON serializable
-    "KBinsDiscretizer",  # Object of type OneHotEncoder is not JSON serializable
+    "Isomap",  # Object of type KDTree is not JSON serializable
+    "KBinsDiscretizer",  # Object of type Float64DType is not JSON serializable
     "KNeighborsTransformer",  # Object of type KDTree is not JSON serializable
-    "KernelPCA",  # Object of type KernelCenterer is not JSON serializable
+    #"KernelPCA",  # Object of type KernelCenterer is not JSON serializable
     "LatentDirichletAllocation",  # Object of type RandomState is not JSON serializable
     "LinearDiscriminantAnalysis",  # This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
     "LocallyLinearEmbedding",  # Object of type NearestNeighbors is not JSON serializable"
@@ -95,11 +95,11 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "OneHotEncoder",  # Object of type type is not JSON serializable
     "OrdinalEncoder",  # Object of type type is not JSON serializable
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    "PowerTransformer",  # Object of type StandardScaler is not JSON serializable
+    #"PowerTransformer",  # Object of type StandardScaler is not JSON serializable
     "RFE",  # RFE.__init__() missing 1 required positional argument: 'estimator'
     "RFECV",  # RFECV.__init__() missing 1 required positional argument: 'estimator'
     "RadiusNeighborsTransformer",  # Object of type KDTree is not JSON serializable
-    "RandomTreesEmbedding",  # Object of type ExtraTreeRegressor is not JSON serializable
+    "RandomTreesEmbedding",  # Object of type type is not JSON serializable
     "SelectFdr",  # Object of type function is not JSON serializable
     "SelectFpr",  # Object of type function is not JSON serializable
     "SelectFromModel",  # SelectFromModel.__init__() missing 1 required positional argument: 'estimator'
@@ -119,9 +119,10 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "CountVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "FrozenEstimator",  # FrozenEstimator.__init__() missing 1 required positional argument: 'estimator'
     "GridSearchCV",  # GridSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_grid'
-    "IsolationForest",  # Object of type ExtraTreeRegressor is not JSON serializable
+    "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
     "KernelDensity",  # Object of type KDTree is not JSON serializable
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
+    "NearestNeighbors",  # Object of type KDTree is not JSON serializable
     "Pipeline",  # Pipeline.__init__() missing 1 required positional argument: 'steps'
     "RandomizedSearchCV",  # RandomizedSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_distributions'
     "SGDOneClassSVM",  # Object of type Hinge is not JSON serializable
@@ -192,7 +193,9 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "PolynomialFeatures": ["_max_degree", "_n_out_full", "_min_degree"],
     "PLSSVD": ["_x_mean", "_x_std"],
     # Others:
+    "IsolationForest":["_max_features", "_max_samples", "_decision_path_lengths", "_average_path_length_per_tree"],
     "OneClassSVM": ["_sparse", "_n_support", "_probA", "_probB", "_gamma"],
+    "NearestNeighbors":["_fit_method","_tree"]
 }
 
 
@@ -574,12 +577,6 @@ class SklearnSerializer(ModelSerializer):
         }
 
         attribute_types_map = dict(zip(filtered_attribute_keys, attribute_types))
-        # Debugging output to check the types and dtypes
-        print("params:", model.get_params())
-        print("Filtered attribute keys:", filtered_attribute_keys)
-        print("Attribute types:", attribute_types)
-        print("Attribute types map:", attribute_types_map)
-        print("Attribute dtypes map:", attribute_dtypes_map)
 
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
