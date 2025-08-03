@@ -25,24 +25,25 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
     #"AdaBoostRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
     #"BaggingRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
-    "ExtraTreesRegressor",  # Object of type ExtraTreeRegressor is not JSON serializable
+    #"ExtraTreesRegressor",  # Object of type ExtraTreeRegressor is not JSON serializable
     "GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
+        # https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/_loss/loss.py
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
-    "GradientBoostingRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
+    "GradientBoostingRegressor",  # Object of type RandomState is not JSON serializable
     "HistGradientBoostingRegressor",  # Object of type HalfSquaredError is not JSON serializable
     "IsotonicRegression",  # Object of type interp1d is not JSON serializable
     "MultiOutputRegressor",  # MultiOutputRegressor.__init__() missing 1 required positional argument: 'estimator'
     "PoissonRegressor",  # Object of type HalfPoissonLoss is not JSON serializable
-    "RandomForestRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
-    "RANSACRegressor",  # Object of type LinearRegression is not JSON serializable
+    #"RandomForestRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
+    #"RANSACRegressor",  # Object of type LinearRegression is not JSON serializable
     "RegressorChain",  # _BaseChain.__init__() missing 1 required positional argument: 'base_estimator'
     "StackingRegressor",  # StackingRegressor.__init__() missing 1 required positional argument: 'estimators'
-    "TransformedTargetRegressor",  # Object of type LinearRegression is not JSON serializable
+    #"TransformedTargetRegressor",  # Object of type LinearRegression is not JSON serializable
     "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
     "VotingRegressor",  # VotingRegressor.__init__() missing 1 required positional argument: 'estimators'
     # Classifiers:
-    "AdaBoostClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
-    "BaggingClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
+    #"AdaBoostClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
+    #"BaggingClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
     "ClassifierChain",  # ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
     "ExtraTreesClassifier",  # Object of type ExtraTreeClassifier is not JSON serializable
@@ -151,6 +152,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "PoissonRegressor": ["_base_loss"],
     "PLSCanonical": ["_x_mean", "_predict_1d"],
     "IsotonicRegression": ["f_"],
+    "TransformedTargetRegressor": ["_training_dim"],
     # Clusters:
     "BisectingKMeans": ["_bisecting_tree"],
     "KMeans": ["_n_threads"],
@@ -297,7 +299,6 @@ class SklearnSerializer(ModelSerializer):
             The serializable representation of the value.
         """
         if isinstance(value, BaseEstimator):
-            print("Serializing BaseEstimator:", value.__class__.__name__)
             # If the value is a BaseEstimator, serialize it using SklearnSerializer
             # This allows for nested estimators to be serialized correctly
             # Check if this is the unfitted estimator template
@@ -333,6 +334,14 @@ class SklearnSerializer(ModelSerializer):
             # Otherwise use the default array to list conversion
             return SklearnSerializer._array_to_list(value)
         if isinstance(value, (np.ndarray)):
+            # Special handling for arrays of estimators
+            if value.dtype == np.dtype('O') and value.size > 0:
+                first_elem = value.ravel()[0]
+                if isinstance(first_elem, BaseEstimator):
+                    # This is an array of estimators, serialize each one
+                    return [[self._convert_to_serializable_types(est) for est in row] 
+                           for row in value]
+            # Regular array handling
             return SklearnSerializer._array_to_list(value)
         if isinstance(value, _csr.csr_matrix):
             # Convert indices and indptr to int32 explicitly
