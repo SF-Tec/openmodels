@@ -5,7 +5,7 @@ This module provides a serializer for scikit-learn models, allowing them to be
 converted to and from dictionary representations.
 """
 
-from typing import Any, Dict, List, Tuple, Type, Optional
+from typing import Any, Callable, Dict, List, Tuple, Type, Optional
 import numpy as np
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 
@@ -385,7 +385,7 @@ class SklearnSerializer(ModelSerializer):
                     ),
                     shape=tuple(value["shape"]),
                 )
-            type_map = {
+            type_map:Dict[str, Callable[[Any], Any]] = {
                 "int": int,
                 "int64": np.int64,
                 "int32": np.int32,
