@@ -17,6 +17,8 @@ from sklearn.utils.discovery import all_estimators
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
 from openmodels.protocols import ModelSerializer
 
+ConverterFunc = Callable[[Any], Any]
+
 ALL_ESTIMATORS = {
     name: cls for name, cls in all_estimators() if issubclass(cls, BaseEstimator)
 }
@@ -373,7 +375,7 @@ class SklearnSerializer(ModelSerializer):
                 self._convert_to_sklearn_types(v, t, attr_dtype)
                 for v, t in zip(value, attr_type)
             ]
-        # Base case: if attr_type is not a list, convert value based on attr_type
+
         if isinstance(attr_type, str):
             if attr_type == "csr_matrix":
                 # Ensure all sparse matrix components are of correct dtype
@@ -385,7 +387,7 @@ class SklearnSerializer(ModelSerializer):
                     ),
                     shape=tuple(value["shape"]),
                 )
-            type_map:Dict[str, Callable[[Any], Any]] = {
+            converters: Dict[str, ConverterFunc] = {
                 "int": int,
                 "int64": np.int64,
                 "int32": np.int32,
@@ -398,8 +400,8 @@ class SklearnSerializer(ModelSerializer):
                 ),
             }
 
-            if attr_type in type_map:
-                return type_map[attr_type](value)
+            if attr_type in converters:
+                return converters[attr_type](value)
             if attr_type in ALL_ESTIMATORS:
                 # This is an estimator type
                 if isinstance(value, dict):
