@@ -23,7 +23,7 @@ ALL_ESTIMATORS = {
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
-    "AdaBoostRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
+    #"AdaBoostRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
     "BaggingRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
     "ExtraTreesRegressor",  # Object of type ExtraTreeRegressor is not JSON serializable
     "GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
@@ -282,8 +282,7 @@ class SklearnSerializer(ModelSerializer):
         tree.__setstate__(state)
         return tree
 
-    @staticmethod
-    def _convert_to_serializable_types(value: Any) -> Any:
+    def _convert_to_serializable_types(self, value: Any) -> Any:
         """
         Convert a value to a serializable type.
 
@@ -297,6 +296,20 @@ class SklearnSerializer(ModelSerializer):
         Any
             The serializable representation of the value.
         """
+        if isinstance(value, BaseEstimator):
+            print("Serializing BaseEstimator:", value.__class__.__name__)
+            # If the value is a BaseEstimator, serialize it using SklearnSerializer
+            # This allows for nested estimators to be serialized correctly
+            # Check if this is the unfitted estimator template
+            try:
+                check_is_fitted(value)
+                return self.serialize(value)
+            except NotFittedError:
+                return {
+                    "__template__": value.__class__.__name__,
+                    "params": self._convert_to_serializable_types(value.get_params())
+                }
+        
         if isinstance(value, (Tree)):
             # If the value is a Tree object, serialize it to a dictionary
             return SklearnSerializer._serialize_tree(value)
@@ -310,10 +323,16 @@ class SklearnSerializer(ModelSerializer):
             # NOTE: This ensures that LogisticRegressionCV works, but to put back the original
             # types we need to convert the keys back to the original types (done on fit).
             return {
-                str(k): SklearnSerializer._convert_to_serializable_types(v)
+                str(k): self._convert_to_serializable_types(v)
                 for k, v in value.items()
             }
-        if isinstance(value, (np.ndarray, List)):
+        if isinstance(value, (list, tuple)):
+            # If the list contains BaseEstimator objects, serialize each one
+            if value and all(isinstance(item, BaseEstimator) for item in value):
+                return [self._convert_to_serializable_types(item) for item in value]
+            # Otherwise use the default array to list conversion
+            return SklearnSerializer._array_to_list(value)
+        if isinstance(value, (np.ndarray)):
             return SklearnSerializer._array_to_list(value)
         if isinstance(value, _csr.csr_matrix):
             # Convert indices and indptr to int32 explicitly
@@ -335,8 +354,7 @@ class SklearnSerializer(ModelSerializer):
 
         return value
 
-    @staticmethod
-    def _convert_to_sklearn_types(
+    def _convert_to_sklearn_types(self,
         value: Any, attr_type: Any = "none", attr_dtype: Optional[str] = None
     ) -> Any:
         """
@@ -379,12 +397,22 @@ class SklearnSerializer(ModelSerializer):
                 return np.array(value, dtype=attr_dtype or np.float64)
             elif attr_type in type_map:
                 return type_map[attr_type](value)
+            elif attr_type in ALL_ESTIMATORS:
+                # This is an estimator type
+                if isinstance(value, dict):
+                    if "__template__" in value:
+                        # This is an unfitted estimator template
+                        estimator_class = ALL_ESTIMATORS[value["__template__"]]
+                        return estimator_class(**value["params"])
+                    else:
+                        # This is a fully serialized estimator
+                        return self.deserialize(value)
             # Add other types as needed
             return value  # Return as-is if no specific conversion is needed
         # Recursive case: if attr_type is a list, process each element in value
         elif isinstance(attr_type, List) and isinstance(value, List):
             return [
-                SklearnSerializer._convert_to_sklearn_types(v, t, attr_dtype)
+                self._convert_to_sklearn_types(v, t, attr_dtype)
                 for v, t in zip(value, attr_type)
             ]
 
@@ -439,6 +467,9 @@ class SklearnSerializer(ModelSerializer):
         """
         if isinstance(item, List) and item:  # If it's a list and not empty
             return [SklearnSerializer.get_nested_types(subitem) for subitem in item]
+        elif isinstance(item, BaseEstimator):
+            # For estimators, return their class name instead of just 'BaseEstimator'
+            return item.__class__.__name__
         else:
             # Return the type name if it's not a list or it's an empty list
             return type(item).__name__
@@ -528,6 +559,12 @@ class SklearnSerializer(ModelSerializer):
         }
 
         attribute_types_map = dict(zip(filtered_attribute_keys, attribute_types))
+        # Debugging output to check the types and dtypes
+        print("params:", model.get_params())
+        print("Filtered attribute keys:", filtered_attribute_keys)
+        print("Attribute types:", attribute_types)
+        print("Attribute types map:", attribute_types_map)
+        print("Attribute dtypes map:", attribute_dtypes_map)
 
         serializable_attribute_values = [
             self._convert_to_serializable_types(value) for value in attribute_values
@@ -542,7 +579,7 @@ class SklearnSerializer(ModelSerializer):
             "attribute_types": attribute_types_map,
             "attribute_dtypes": attribute_dtypes_map,
             "estimator_class": model.__class__.__name__,
-            "params": model.get_params(),
+            "params": self._convert_to_serializable_types(model.get_params()),
             "producer_name": model.__module__.split(".")[0],
             "producer_version": getattr(model, "_sklearn_version", None),
             "model_version": getattr(model, "_sklearn_version", None),
@@ -593,6 +630,11 @@ class SklearnSerializer(ModelSerializer):
             # Handle tree_ separately
             if attr_type == "Tree":
                 model.tree_ = SklearnSerializer._deserialize_tree(value)
+                continue
+            # Handle template estimators
+            if isinstance(value, dict) and "__template__" in value:
+                estimator_class = ALL_ESTIMATORS[value["__template__"]]
+                setattr(model, attribute, estimator_class(**value["params"]))
             else:
                 # Pass both value and attr_type to _convert_to_sklearn_types
                 setattr(
