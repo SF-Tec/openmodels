@@ -6,8 +6,8 @@ converted to and from dictionary representations.
 """
 
 from typing import Any, Callable, Dict, List, Tuple, Type, Optional
-from fastapi import params
 import numpy as np
+import inspect
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 
 from sklearn.tree._tree import Tree
@@ -32,15 +32,15 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "GradientBoostingRegressor",  # Object of type RandomState is not JSON serializable
     "HistGradientBoostingRegressor",  # Object of type HalfSquaredError is not JSON serializable
     "IsotonicRegression",  # Object of type interp1d is not JSON serializable
-    "MultiOutputRegressor",  # MultiOutputRegressor.__init__() missing 1 required positional argument: 'estimator'
+    #"MultiOutputRegressor",  # MultiOutputRegressor.__init__() missing 1 required positional argument: 'estimator'
     "PoissonRegressor",  # Object of type HalfPoissonLoss is not JSON serializable
-    "RegressorChain",  # _BaseChain.__init__() missing 1 required positional argument: 'base_estimator'
-    "StackingRegressor",  # StackingRegressor.__init__() missing 1 required positional argument: 'estimators'
+    #"RegressorChain",  # _BaseChain.__init__() missing 1 required positional argument: 'base_estimator'
+    #"StackingRegressor",  # StackingRegressor.__init__() missing 1 required positional argument: 'estimators'
     "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
-    "VotingRegressor",  # VotingRegressor.__init__() missing 1 required positional argument: 'estimators'
+    #"VotingRegressor",  # VotingRegressor.__init__() missing 1 required positional argument: 'estimators'
     # Classifiers:
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
-    "ClassifierChain",  # ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
+    #"ClassifierChain",  # ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
     "FixedThresholdClassifier",  # FixedThresholdClassifier.__init__() missing 1 required positional argument: 'estimator'
     "GaussianProcessClassifier",  # Object of type OneVsRestClassifier is not JSON serializable
     "GradientBoostingClassifier",  # Object of type RandomState is not JSON serializable
@@ -297,6 +297,7 @@ class SklearnSerializer(ModelSerializer):
         Any
             The serializable representation of the value.
         """
+        
         if isinstance(value, BaseEstimator):
             # If the value is a BaseEstimator, serialize it using SklearnSerializer
             # This allows for nested estimators to be serialized correctly
@@ -326,6 +327,15 @@ class SklearnSerializer(ModelSerializer):
                 str(k): self._convert_to_serializable_types(v) for k, v in value.items()
             }
         if isinstance(value, (list, tuple)):
+            # If the list contains tuples of (name, estimator), serialize each estimator
+            if value and all(
+                isinstance(item, tuple) and len(item) == 2 and isinstance(item[1], BaseEstimator)
+                for item in value
+            ):
+                return [
+                    (item[0], self._convert_to_serializable_types(item[1]))
+                    for item in value
+                ]
             # If the list contains BaseEstimator objects, serialize each one
             if value and all(isinstance(item, BaseEstimator) for item in value):
                 return [self._convert_to_serializable_types(item) for item in value]
@@ -570,7 +580,9 @@ class SklearnSerializer(ModelSerializer):
 
         # Serialize model parameters
         params = model.get_params()
+        #print("params:", params)
         serializable_params = self._convert_to_serializable_types(params)
+        print("serializable_params:", serializable_params)
         param_types = {param_name: SklearnSerializer.get_nested_types(param_value) for param_name, param_value in params.items()}
         param_dtypes = {
             param_name: SklearnSerializer.get_dtype(param_value)
@@ -581,22 +593,6 @@ class SklearnSerializer(ModelSerializer):
         # We losely follow the ONNX standard for the serialized model.
         # https://github.com/onnx/onnx/blob/main/docs/IR.md
 
-        result =  {
-            "attributes": dict(
-                zip(filtered_attribute_keys, serializable_attribute_values)
-            ),
-            "attribute_types": attribute_types_map,
-            "attribute_dtypes": attribute_dtypes_map,
-            "estimator_class": model.__class__.__name__,
-            "params": serializable_params,
-            "param_types": param_types,
-            "param_dtypes": param_dtypes,
-            "producer_name": model.__module__.split(".")[0],
-            "producer_version": getattr(model, "_sklearn_version", None),
-            "model_version": getattr(model, "_sklearn_version", None),
-            "domain": "sklearn",
-        }
-        print(result)
         return {
             "attributes": dict(
                 zip(filtered_attribute_keys, serializable_attribute_values)
@@ -651,13 +647,23 @@ class SklearnSerializer(ModelSerializer):
         params = data.get("params", {})
         param_types = data.get("param_types", {})
         param_dtypes = data.get("param_dtypes", {})
+
+        # Get valid constructor arguments for the estimator
+        estimator_cls = ALL_ESTIMATORS[estimator_class]
+        valid_args = inspect.signature(estimator_cls.__init__).parameters.keys()
+        # Remove 'self' if present
+        valid_args = [arg for arg in valid_args if arg != 'self']
+
         reconstructed_params = {}
         for param_name, param_value in params.items():
+            # Only include params that are valid constructor arguments
+            if param_name not in valid_args:
+                continue
             param_type = param_types.get(param_name)
             param_dtype = param_dtypes.get(param_name)
             reconstructed_params[param_name] = self._convert_to_sklearn_types(param_value, param_type, param_dtype)
 
-        model = ALL_ESTIMATORS[estimator_class](**reconstructed_params)
+        model = estimator_cls(**reconstructed_params)
 
         for attribute, value in data["attributes"].items():
             # Retrieve the attribute type from data["attribute_types"]

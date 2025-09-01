@@ -6,11 +6,15 @@ from sklearn.datasets import make_classification
 from sklearn.feature_extraction import FeatureHasher
 from openmodels.test_helpers import run_test_model
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
+from test.test_regression import REGRESSORS
+from test.test_classification import CLASSIFIERS
 
-# Get all transformer estimators, filtering out not supported ones
+# Get all transformer estimators, filtering out not supported ones and those that are also regressors/classifiers
 TRANSFORMERS = [
     cls for name, cls in all_estimators(type_filter="transformer")
     if name not in NOT_SUPPORTED_ESTIMATORS
+    and name not in [reg.__name__ for reg in REGRESSORS]
+    and name not in [clf.__name__ for clf in CLASSIFIERS]
 ]
 
 @pytest.fixture(scope="module")
@@ -68,6 +72,7 @@ def test_transformer(Transformer, data):
         x = pairwise_kernels(X, metric="linear")
     if Transformer.__name__ in ["PLSSVD"]:
         args["n_components"] = 1
+
 
     transformer = Transformer(**args)
 
