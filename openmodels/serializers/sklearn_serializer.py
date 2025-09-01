@@ -6,6 +6,7 @@ converted to and from dictionary representations.
 """
 
 from typing import Any, Callable, Dict, List, Tuple, Type, Optional
+from fastapi import params
 import numpy as np
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 
@@ -567,8 +568,35 @@ class SklearnSerializer(ModelSerializer):
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
+        # Serialize model parameters
+        params = model.get_params()
+        serializable_params = self._convert_to_serializable_types(params)
+        param_types = {param_name: SklearnSerializer.get_nested_types(param_value) for param_name, param_value in params.items()}
+        param_dtypes = {
+            param_name: SklearnSerializer.get_dtype(param_value)
+            for param_name, param_value in params.items()
+            if isinstance(param_value, np.ndarray) or (isinstance(param_value, (list, tuple)) and param_value)
+        }
+
         # We losely follow the ONNX standard for the serialized model.
         # https://github.com/onnx/onnx/blob/main/docs/IR.md
+
+        result =  {
+            "attributes": dict(
+                zip(filtered_attribute_keys, serializable_attribute_values)
+            ),
+            "attribute_types": attribute_types_map,
+            "attribute_dtypes": attribute_dtypes_map,
+            "estimator_class": model.__class__.__name__,
+            "params": serializable_params,
+            "param_types": param_types,
+            "param_dtypes": param_dtypes,
+            "producer_name": model.__module__.split(".")[0],
+            "producer_version": getattr(model, "_sklearn_version", None),
+            "model_version": getattr(model, "_sklearn_version", None),
+            "domain": "sklearn",
+        }
+        print(result)
         return {
             "attributes": dict(
                 zip(filtered_attribute_keys, serializable_attribute_values)
@@ -576,7 +604,9 @@ class SklearnSerializer(ModelSerializer):
             "attribute_types": attribute_types_map,
             "attribute_dtypes": attribute_dtypes_map,
             "estimator_class": model.__class__.__name__,
-            "params": self._convert_to_serializable_types(model.get_params()),
+            "params": serializable_params,
+            "param_types": param_types,
+            "param_dtypes": param_dtypes,
             "producer_name": model.__module__.split(".")[0],
             "producer_version": getattr(model, "_sklearn_version", None),
             "model_version": getattr(model, "_sklearn_version", None),
@@ -616,8 +646,18 @@ class SklearnSerializer(ModelSerializer):
             raise UnsupportedEstimatorError(
                 f"Unsupported estimator class: {estimator_class}"
             )
+        
+        # Reconstruct params with correct types/dtypes
+        params = data.get("params", {})
+        param_types = data.get("param_types", {})
+        param_dtypes = data.get("param_dtypes", {})
+        reconstructed_params = {}
+        for param_name, param_value in params.items():
+            param_type = param_types.get(param_name)
+            param_dtype = param_dtypes.get(param_name)
+            reconstructed_params[param_name] = self._convert_to_sklearn_types(param_value, param_type, param_dtype)
 
-        model = ALL_ESTIMATORS[estimator_class](**data["params"])
+        model = ALL_ESTIMATORS[estimator_class](**reconstructed_params)
 
         for attribute, value in data["attributes"].items():
             # Retrieve the attribute type from data["attribute_types"]
