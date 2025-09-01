@@ -9,6 +9,8 @@ from typing import Any, Callable, Dict, List, Tuple, Type, Optional
 import numpy as np
 import inspect
 from scipy.sparse import _csr, csr_matrix  # type: ignore
+from scipy.stats._distn_infrastructure import rv_continuous_frozen
+import scipy.stats
 
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
@@ -41,36 +43,36 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Classifiers:
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
     #"ClassifierChain",  # ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
-    "FixedThresholdClassifier",  # FixedThresholdClassifier.__init__() missing 1 required positional argument: 'estimator'
+    #"FixedThresholdClassifier",  # FixedThresholdClassifier.__init__() missing 1 required positional argument: 'estimator'
     "GaussianProcessClassifier",  # Object of type OneVsRestClassifier is not JSON serializable
     "GradientBoostingClassifier",  # Object of type RandomState is not JSON serializable
     "HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
     "KNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
-    "MultiOutputClassifier",  # MultiOutputClassifier.__init__() missing 1 required positional argument: 'estimator'
-    "OneVsOneClassifier",  # OneVsOneClassifier.__init__() missing 1 required positional argument: 'estimator'
-    "OneVsRestClassifier",  # OneVsOneClassifier.__init__() missing 1 required positional argument: 'estimator'
-    "OutputCodeClassifier",  # OneVsOneClassifier.__init__() missing 1 required positional argument: 'estimator'
+    #"MultiOutputClassifier",  # MultiOutputClassifier.__init__() missing 1 required positional argument: 'estimator'
+    "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict' 
+    "OneVsRestClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
+    "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
     "Perceptron",  # Object of type Hinge is not JSON serializable
     "RadiusNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "RidgeClassifierCV",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
-    "SelfTrainingClassifier",  # ValueError: You must pass an estimator to SelfTrainingClassifier. Use `estimator`.
-    "StackingClassifier",  # StackingClassifier.__init__() missing 1 required positional argument: 'estimators'
-    "TunedThresholdClassifierCV",  # TunedThresholdClassifierCV.__init__() missing 1 required positional argument: 'estimator'
-    "VotingClassifier",  # VotingClassifier.__init__() missing 1 required positional argument: 'estimators'
+    #"AttributeError: 'dict' object has no attribute 'predict_proba'",  # ValueError: You must pass an estimator to SelfTrainingClassifier. Use `estimator`.
+    "StackingClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelEncoder
+    "TunedThresholdClassifierCV",  # TypeError: Object of type _CurveScorer is not JSON serializable
+    "VotingClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelEncoder
     # Clusters:
     "Birch",  # Object of type _CFNode is not JSON serializable
     "BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
     "FeatureAgglomeration",  # Object of type _ArrayFunctionDispatcher is not JSON serializable
     "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8')...]" not understood
     # Transformers:
-    "ColumnTransformer",  # ColumnTransformer.__init__() missing 1 required positional argument: 'transformers'
-    "DictVectorizer",  # Object of type type is not JSON serializable (in params)
+    "ColumnTransformer",  # AttributeError: 'dict' object has no attribute 'transform'
+    "DictVectorizer",  # ValueError:
     "FeatureHasher",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
-    "FeatureUnion",  # FeatureUnion.__init__() missing 1 required positional argument: 'transformer_list'
+    "FeatureUnion",  # AttributeError: 'dict' object has no attribute 'transform'
     "GaussianRandomProjection",  # Object of type RandomState is not JSON serializable
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
     "HashingVectorizer",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
@@ -84,23 +86,23 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
     "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
-    "OneHotEncoder",  # Object of type type is not JSON serializable
-    "OrdinalEncoder",  # Object of type type is not JSON serializable
+    "OneHotEncoder",  # ValueError:
+    #"OrdinalEncoder",  # Object of type type is not JSON serializable
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    "RFE",  # RFE.__init__() missing 1 required positional argument: 'estimator'
-    "RFECV",  # RFECV.__init__() missing 1 required positional argument: 'estimator'
+    #"RFE",  # RFE.__init__() missing 1 required positional argument: 'estimator'
+    #"RFECV",  # RFECV.__init__() missing 1 required positional argument: 'estimator'
     "RadiusNeighborsTransformer",  # Object of type KDTree is not JSON serializable
-    "RandomTreesEmbedding",  # Object of type type is not JSON serializable
+    "RandomTreesEmbedding",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
     "SelectFdr",  # Object of type function is not JSON serializable
     "SelectFpr",  # Object of type function is not JSON serializable
-    "SelectFromModel",  # SelectFromModel.__init__() missing 1 required positional argument: 'estimator'
+    #"SelectFromModel",  # SelectFromModel.__init__() missing 1 required positional argument: 'estimator'
     "SelectFwe",  # Object of type function is not JSON serializable
     "SelectKBest",  # Object of type function is not JSON serializable
     "SelectPercentile",  # Object of type function is not JSON serializable
-    "SequentialFeatureSelector",  # SequentialFeatureSelector.__init__() missing 1 required positional argument: 'estimator'
+    #"SequentialFeatureSelector",  # SequentialFeatureSelector.__init__() missing 1 required positional argument: 'estimator'
     "SimpleImputer",  # Object of type Float64DType is not JSON serializable
     "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
-    "SparseCoder",  # SparseCoder.__init__() missing 1 required positional argument: 'dictionary'
+    #"SparseCoder",  # SparseCoder.__init__() missing 1 required positional argument: 'dictionary'
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
@@ -108,14 +110,14 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Others:
     "BayesianGaussianMixture",  # Object of type ndarray is not JSON serializable
     "CountVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
-    "FrozenEstimator",  # FrozenEstimator.__init__() missing 1 required positional argument: 'estimator'
-    "GridSearchCV",  # GridSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_grid'
+    #"FrozenEstimator",  # FrozenEstimator.__init__() missing 1 required positional argument: 'estimator'
+    #"GridSearchCV",  # GridSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_grid'
     "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
     "KernelDensity",  # Object of type KDTree is not JSON serializable
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
     "NearestNeighbors",  # Object of type KDTree is not JSON serializable
-    "Pipeline",  # Pipeline.__init__() missing 1 required positional argument: 'steps'
-    "RandomizedSearchCV",  # RandomizedSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_distributions'
+    #"Pipeline",  # Pipeline.__init__() missing 1 required positional argument: 'steps'
+    #"RandomizedSearchCV",  # RandomizedSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_distributions'
     "SGDOneClassSVM",  # Object of type Hinge is not JSON serializable
     "TfidfVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
 ]
@@ -162,6 +164,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "RadiusNeighborsClassifier": ["_fit_method", "_fit_X", "_y", "_tree"],
     "RidgeClassifier": ["_label_binarizer"],
     "RidgeClassifierCV": ["_label_binarizer"],
+    "StackingClassifier": ["_label_encoder"],
     "SVC": [
         "_sparse",
         "_n_support",
@@ -171,7 +174,11 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_probB",
         "_gamma",
     ],
+    "TunedThresholdClassifierCV": ["_curve_scorer"],
     # Transformers:
+    "ColumnTransformer": ["_columns", "_remainder"],
+    "OneHotEncoder": ["_infrequent_enabled", "_drop_idx_after_grouping", "_n_features_outs"],
+    "OrdinalEncoder": ["_missing_indices", "_infrequent_enabled"],
     "KBinsDiscretizer": ["_encoder"],
     "KernelPCA": ["_centerer"],
     "KNNImputer": ["_mask_fit_X", "_valid_mask"],
@@ -297,7 +304,26 @@ class SklearnSerializer(ModelSerializer):
         Any
             The serializable representation of the value.
         """
-        
+        if isinstance(value, rv_continuous_frozen):
+            # Serialize scipy frozen distributions as a dict
+            return {
+                "__scipy_dist__": True,
+                "dist_name": value.dist.name,
+                "args": value.args,
+                "kwargs": value.kwds,
+            }
+        if isinstance(value, type):
+            # Serialize Python type objects as their string name
+            return {"__type__": True, "type_name": value.__name__}
+    
+        if isinstance(value, slice):
+            # Serialize slice objects as a dict
+            return {
+                "__slice__": True,
+                "start": value.start,
+                "stop": value.stop,
+                "step": value.step,
+            }
         if isinstance(value, BaseEstimator):
             # If the value is a BaseEstimator, serialize it using SklearnSerializer
             # This allows for nested estimators to be serialized correctly
@@ -327,6 +353,15 @@ class SklearnSerializer(ModelSerializer):
                 str(k): self._convert_to_serializable_types(v) for k, v in value.items()
             }
         if isinstance(value, (list, tuple)):
+              # If the list contains tuples of (name, estimator, columns), serialize the estimator
+            if value and all(
+                isinstance(item, tuple) and len(item) == 3 and isinstance(item[1], BaseEstimator)
+                for item in value
+            ):
+                return [
+                    (item[0], self._convert_to_serializable_types(item[1]), item[2])
+                    for item in value
+                ]
             # If the list contains tuples of (name, estimator), serialize each estimator
             if value and all(
                 isinstance(item, tuple) and len(item) == 2 and isinstance(item[1], BaseEstimator)
@@ -380,6 +415,30 @@ class SklearnSerializer(ModelSerializer):
         Convert a JSON-deserialized value to its scikit-learn type.
 
         """
+        if isinstance(value, dict) and value.get("__scipy_dist__"):
+            dist = getattr(scipy.stats, value["dist_name"])
+            return dist(*value["args"], **value["kwargs"])
+        
+        if isinstance(value, dict) and "estimator_class" in value:
+            # Recursively deserialize fitted estimators
+            return self.deserialize(value)
+    
+        if isinstance(value, dict) and value.get("__type__"):
+            # Deserialize Python type objects from their string name
+            return getattr(__builtins__, value["type_name"], float)  # Default to float if not found
+    
+        if isinstance(value, dict) and value.get("__slice__"):
+            # Deserialize slice objects
+            return slice(value["start"], value["stop"], value["step"])
+
+        if isinstance(value, dict) and "__template__" in value:
+            estimator_class = ALL_ESTIMATORS[value["__template__"]]
+            params = value.get("params", {})
+            # Recursively convert all params
+            for k in params:
+                params[k] = self._convert_to_sklearn_types(params[k], None, None)
+            return estimator_class(**params)
+    
         # Recursive case: if attr_type is a list, process each element in value
         if isinstance(attr_type, List) and isinstance(value, List):
             return [
@@ -582,7 +641,7 @@ class SklearnSerializer(ModelSerializer):
         params = model.get_params()
         #print("params:", params)
         serializable_params = self._convert_to_serializable_types(params)
-        print("serializable_params:", serializable_params)
+        #print("serializable_params:", serializable_params)
         param_types = {param_name: SklearnSerializer.get_nested_types(param_value) for param_name, param_value in params.items()}
         param_dtypes = {
             param_name: SklearnSerializer.get_dtype(param_value)
@@ -661,29 +720,30 @@ class SklearnSerializer(ModelSerializer):
                 continue
             param_type = param_types.get(param_name)
             param_dtype = param_dtypes.get(param_name)
-            reconstructed_params[param_name] = self._convert_to_sklearn_types(param_value, param_type, param_dtype)
-
+            # Special handling for Pipeline steps
+            if estimator_class == "Pipeline" and param_name == "steps":
+                reconstructed_params[param_name] = [
+                    (name, self._convert_to_sklearn_types(est, None, None))
+                    for name, est in param_value
+                ]
+            else:
+                reconstructed_params[param_name] = self._convert_to_sklearn_types(param_value, param_type, param_dtype)
         model = estimator_cls(**reconstructed_params)
+        print("model type after instantiation:", type(model))
 
+        
         for attribute, value in data["attributes"].items():
-            # Retrieve the attribute type from data["attribute_types"]
             attr_type = data["attribute_types"].get(attribute)
-            # Get dtype if available
             attr_dtype = data.get("attribute_dtypes", {}).get(attribute)
             # Handle tree_ separately
             if attr_type == "Tree":
                 model.tree_ = SklearnSerializer._deserialize_tree(value)
                 continue
-            # Handle template estimators
-            if isinstance(value, dict) and "__template__" in value:
-                estimator_class = ALL_ESTIMATORS[value["__template__"]]
-                setattr(model, attribute, estimator_class(**value["params"]))
-            else:
-                # Pass both value and attr_type to _convert_to_sklearn_types
-                setattr(
-                    model,
-                    attribute,
-                    self._convert_to_sklearn_types(value, attr_type, attr_dtype),
-                )
-
+            # Use _convert_to_sklearn_types for all attributes
+            setattr(
+                model,
+                attribute,
+                self._convert_to_sklearn_types(value, attr_type, attr_dtype),
+            )
+        print("Reconstructed model:", model)
         return model
