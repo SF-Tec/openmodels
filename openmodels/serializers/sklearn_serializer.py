@@ -440,7 +440,7 @@ class SklearnSerializer(ModelSerializer):
             return estimator_class(**params)
     
         # Recursive case: if attr_type is a list, process each element in value
-        if isinstance(attr_type, List) and isinstance(value, List):
+        if isinstance(attr_type, list) and isinstance(value, list):
             return [
                 self._convert_to_sklearn_types(v, t, attr_dtype)
                 for v, t in zip(value, attr_type)
@@ -639,9 +639,7 @@ class SklearnSerializer(ModelSerializer):
 
         # Serialize model parameters
         params = model.get_params()
-        #print("params:", params)
         serializable_params = self._convert_to_serializable_types(params)
-        #print("serializable_params:", serializable_params)
         param_types = {param_name: SklearnSerializer.get_nested_types(param_value) for param_name, param_value in params.items()}
         param_dtypes = {
             param_name: SklearnSerializer.get_dtype(param_value)
@@ -729,7 +727,6 @@ class SklearnSerializer(ModelSerializer):
             else:
                 reconstructed_params[param_name] = self._convert_to_sklearn_types(param_value, param_type, param_dtype)
         model = estimator_cls(**reconstructed_params)
-        print("model type after instantiation:", type(model))
 
         
         for attribute, value in data["attributes"].items():
@@ -745,5 +742,5 @@ class SklearnSerializer(ModelSerializer):
                 attribute,
                 self._convert_to_sklearn_types(value, attr_type, attr_dtype),
             )
-        print("Reconstructed model:", model)
+            
         return model

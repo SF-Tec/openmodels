@@ -1,12 +1,10 @@
 import pytest
 import random
 import numpy as np
-from sklearn.svm import LinearSVR
 from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_regression
 from sklearn.feature_extraction import FeatureHasher
 from sklearn.linear_model import LinearRegression
-from sklearn.svm import LinearSVR
 from sklearn.ensemble import RandomForestRegressor
 from openmodels.test_helpers import run_test_model
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
@@ -18,7 +16,7 @@ REGRESSORS = [cls for name, cls in all_estimators(type_filter="regressor")
 @pytest.fixture(scope="module")
 def data():
     x, y = make_regression(  # type: ignore
-        n_samples=50,
+        n_samples=100,
         n_features=3,
         n_informative=3,
         random_state=42,
