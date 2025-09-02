@@ -206,7 +206,6 @@ class SklearnSerializer(ModelSerializer):
         A list of supported types for serialization.
     """
 
-    @staticmethod
     def all_estimators(
         type_filter: Optional[str] = None,
     ) -> List[Tuple[str, Type[BaseEstimator]]]:
@@ -225,8 +224,7 @@ class SklearnSerializer(ModelSerializer):
             if name not in NOT_SUPPORTED_ESTIMATORS
         ]
 
-    @staticmethod
-    def _serialize_tree(tree: Tree) -> Dict[str, Any]:
+    def _serialize_tree(self, tree: Tree) -> Dict[str, Any]:
         """
         Serializes a sklearn.tree._tree.Tree object to a dictionary.
 
@@ -248,10 +246,10 @@ class SklearnSerializer(ModelSerializer):
             "nodes_dtype": [list(t) for t in state["nodes"].dtype.descr],  # for JSON
         }
 
-    @staticmethod
-    def _deserialize_tree(tree_data: Dict[str, Any]) -> Tree:
+    def _deserialize_tree(self, tree_data: Dict[str, Any]) -> Tree:
         """
         Deserializes a dictionary representation of a tree back to a sklearn.tree._tree.Tree object.
+
         """
         tree = Tree(
             tree_data["n_features"],
@@ -276,40 +274,71 @@ class SklearnSerializer(ModelSerializer):
         tree.__setstate__(state)
         return tree
 
-    def _convert_to_serializable_types(self, value: Any) -> Any:
+    def _serialize_type_object(self, value: Type) -> Dict[str, Any]:
         """
-        Convert a value to a serializable type.
+        Serializes a Python type object to a dictionary.
 
-        Parameters
-        ----------
-        value : Any
-            The value to convert.
-
-        Returns
-        -------
-        Any
-            The serializable representation of the value.
         """
-        if isinstance(value, rv_continuous_frozen):
-            # Serialize scipy frozen distributions as a dict
-            return {
-                "__scipy_dist__": True,
-                "dist_name": value.dist.name,
-                "args": value.args,
-                "kwargs": value.kwds,
-            }
-        if isinstance(value, type):
-            # Serialize Python type objects as their string name
-            return {"__type__": True, "type_name": value.__name__}
+        return {"__type__": True, "type_name": value.__name__}
 
-        if isinstance(value, slice):
-            # Serialize slice objects as a dict
-            return {
-                "__slice__": True,
-                "start": value.start,
-                "stop": value.stop,
-                "step": value.step,
-            }
+    def _serialize_slice_object(self, value: slice) -> Dict[str, Any]:
+        """
+        Serializes a slice object to a dictionary.
+        """
+        return {
+            "__slice__": True,
+            "start": value.start,
+            "stop": value.stop,
+            "step": value.step,
+        }
+
+    def _serialize_csr_matrix(self, value: _csr.csr_matrix) -> Dict[str, Any]:
+        """
+        Serializes a sparse CSR matrix to a dictionary.
+        """
+        csr_value = csr_matrix(value)
+        serialized_sparse_matrix = {
+            "data": self._array_to_list(csr_value.data),
+            "indptr": self._array_to_list(
+                csr_value.indptr.astype(np.int32)
+            ),
+            "indices": self._array_to_list(
+                csr_value.indices.astype(np.int32)
+            ),
+            "shape": self._array_to_list(csr_value.shape),
+        }
+        return serialized_sparse_matrix
+
+    def _serialize_scipy_dist(self, value: rv_continuous_frozen) -> Dict[str, Any]:
+        """
+        Serializes a scipy.stats.rv_continuous_frozen object to a dictionary.
+        """
+        return {
+            "__scipy_dist__": True,
+            "dist_name": value.dist.name,
+            "args": value.args,
+            "kwargs": value.kwds,
+        }
+
+    def _convert_to_serializable_types(self, value: type) -> Dict[str, Any]:
+        """
+        Converts a value to a serializable type.
+        """
+
+        # Dispatch table
+        handlers = [
+            (rv_continuous_frozen, self._serialize_scipy_dist),
+            (type, self._serialize_type_object),
+            (slice, self._serialize_slice_object),
+            (Tree, self._serialize_tree),
+            (_csr.csr_matrix, self._serialize_csr_matrix),
+            (np.generic, lambda v: v.item()),
+        ]
+
+        for typ, handler in handlers:
+            if isinstance(value, typ):
+                return handler(value)
+
         if isinstance(value, BaseEstimator):
             # If the value is a BaseEstimator, serialize it using SklearnSerializer
             # This allows for nested estimators to be serialized correctly
@@ -322,10 +351,6 @@ class SklearnSerializer(ModelSerializer):
                     "__template__": value.__class__.__name__,
                     "params": self._convert_to_serializable_types(value.get_params()),
                 }
-
-        if isinstance(value, (Tree)):
-            # If the value is a Tree object, serialize it to a dictionary
-            return SklearnSerializer._serialize_tree(value)
 
         if isinstance(value, dict):
             # Scikit-learn estimators (e.g., LogisticRegressionCV) may use non-string types
@@ -365,7 +390,8 @@ class SklearnSerializer(ModelSerializer):
             if value and all(isinstance(item, BaseEstimator) for item in value):
                 return [self._convert_to_serializable_types(item) for item in value]
             # Otherwise use the default array to list conversion
-            return SklearnSerializer._array_to_list(value)
+            return self._array_to_list(value)
+
         if isinstance(value, (np.ndarray)):
             # Special handling for arrays of estimators
             if value.dtype == np.dtype("O") and value.size > 0:
@@ -377,24 +403,7 @@ class SklearnSerializer(ModelSerializer):
                         for row in value
                     ]
             # Regular array handling
-            return SklearnSerializer._array_to_list(value)
-        if isinstance(value, _csr.csr_matrix):
-            # Convert indices and indptr to int32 explicitly
-            csr_value = csr_matrix(value)
-            serialized_sparse_matrix = {
-                "data": SklearnSerializer._array_to_list(csr_value.data),
-                "indptr": SklearnSerializer._array_to_list(
-                    csr_value.indptr.astype(np.int32)
-                ),
-                "indices": SklearnSerializer._array_to_list(
-                    csr_value.indices.astype(np.int32)
-                ),
-                "shape": SklearnSerializer._array_to_list(csr_value.shape),
-            }
-            return serialized_sparse_matrix
-        if isinstance(value, (np.generic)):
-            # Convert numpy scalar (e.g., np.int64, np.float64) to native Python type
-            return value.item()
+            return self._array_to_list(value)
 
         return value
 
@@ -476,8 +485,7 @@ class SklearnSerializer(ModelSerializer):
 
         return value
 
-    @staticmethod
-    def _array_to_list(array: Any) -> Any:
+    def _array_to_list(self, array: Any) -> Any:
         """
         Recursively convert numpy arrays to nested lists.
 
@@ -492,18 +500,17 @@ class SklearnSerializer(ModelSerializer):
             The input converted to a nested list structure, or the original value if not an array.
         """
         if isinstance(array, np.ndarray):
-            return SklearnSerializer._array_to_list(array.tolist())
+            return self._array_to_list(array.tolist())
         elif isinstance(array, list):
-            return [SklearnSerializer._array_to_list(item) for item in array]
+            return [self._array_to_list(item) for item in array]
         elif isinstance(array, tuple):
-            return tuple(SklearnSerializer._array_to_list(item) for item in array)
+            return tuple(self._array_to_list(item) for item in array)
         elif isinstance(array, np.generic):
             return array.item()
         else:
             return array
 
-    @staticmethod
-    def get_nested_types(item: Any) -> Any:
+    def get_nested_types(self, item: Any) -> Any:
         """
         Recursively determine the type of elements within nested lists.
 
@@ -524,7 +531,7 @@ class SklearnSerializer(ModelSerializer):
 
         """
         if isinstance(item, List) and item:  # If it's a list and not empty
-            return [SklearnSerializer.get_nested_types(subitem) for subitem in item]
+            return [self.get_nested_types(subitem) for subitem in item]
         elif isinstance(item, BaseEstimator):
             # For estimators, return their class name instead of just 'BaseEstimator'
             return item.__class__.__name__
@@ -532,8 +539,7 @@ class SklearnSerializer(ModelSerializer):
             # Return the type name if it's not a list or it's an empty list
             return type(item).__name__
 
-    @staticmethod
-    def get_dtype(value: Any) -> str:
+    def get_dtype(self, value: Any) -> str:
         """
         Get the dtype of a numpy array, otherwise return empty string.
         """
@@ -614,11 +620,11 @@ class SklearnSerializer(ModelSerializer):
         # Generate attribute types with nested structure.
         # These types are used to convert the serialized attributes back to their original types.
         attribute_types = [
-            SklearnSerializer.get_nested_types(value) for value in attribute_values
+            self.get_nested_types(value) for value in attribute_values
         ]
 
         attribute_dtypes_map = {
-            key: SklearnSerializer.get_dtype(value)
+            key: self.get_dtype(value)
             for key, value in zip(filtered_attribute_keys, attribute_values)
             if isinstance(value, np.ndarray)  # Only include NumPy arrays
         }
@@ -633,11 +639,11 @@ class SklearnSerializer(ModelSerializer):
         params = model.get_params()
         serializable_params = self._convert_to_serializable_types(params)
         param_types = {
-            param_name: SklearnSerializer.get_nested_types(param_value)
+            param_name: self.get_nested_types(param_value)
             for param_name, param_value in params.items()
         }
         param_dtypes = {
-            param_name: SklearnSerializer.get_dtype(param_value)
+            param_name: self.get_dtype(param_value)
             for param_name, param_value in params.items()
             if isinstance(param_value, np.ndarray)
             or (isinstance(param_value, (list, tuple)) and param_value)
@@ -731,7 +737,7 @@ class SklearnSerializer(ModelSerializer):
             attr_dtype = data.get("attribute_dtypes", {}).get(attribute)
             # Handle tree_ separately
             if attr_type == "Tree":
-                model.tree_ = SklearnSerializer._deserialize_tree(value)
+                model.tree_ = self._deserialize_tree(value)
                 continue
             # Use _convert_to_sklearn_types for all attributes
             setattr(
