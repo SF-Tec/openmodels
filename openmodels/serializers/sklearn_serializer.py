@@ -12,6 +12,7 @@ from scipy.sparse import _csr, csr_matrix  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: ignore
 import scipy.stats  # type: ignore
 
+import sklearn
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
@@ -19,12 +20,15 @@ from sklearn.utils.discovery import all_estimators
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
 from openmodels.protocols import ModelSerializer
+import warnings
 
 ConverterFunc = Callable[[Any], Any]
 
 ALL_ESTIMATORS = {
     name: cls for name, cls in all_estimators() if issubclass(cls, BaseEstimator)
 }
+
+TESTED_VERSIONS = ["1.6.1","1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
@@ -103,6 +107,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "SGDOneClassSVM",  # Object of type Hinge is not JSON serializable
     "TfidfVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
 ]
+
 
 # Dictionary of attribute exceptions
 ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
@@ -205,6 +210,34 @@ class SklearnSerializer(ModelSerializer):
     SUPPORTED_TYPES : List[Type]
         A list of supported types for serialization.
     """
+
+    def check_version(self, stored_version: str) -> None:
+        """
+        Check compatibility between stored scikit-learn version and the current environment.
+
+        Parameters
+        ----------
+        stored_version : str
+            The scikit-learn version recorded during serialization.
+
+        Notes
+        -----
+        - Issues a warning if the stored version does not match the current version.
+        - Mentions the baseline supported version (1.7.1).
+        - Does nothing if no version is stored (for backward compatibility).
+        """
+        if not stored_version:
+            return  # No version info available
+
+        current_version = sklearn.__version__
+        if stored_version != current_version:
+            warnings.warn(
+                f"Version mismatch detected in sklearn deserialization:\n"
+                f"- Model serialized with scikit-learn {stored_version}\n"
+                f"- Current environment: scikit-learn {current_version}\n\n"
+                f"OpenModels has been tested under {TESTED_VERSIONS}. ",
+                UserWarning,
+            )
 
     @staticmethod
     def all_estimators(
@@ -691,6 +724,9 @@ class SklearnSerializer(ModelSerializer):
         >>> deserialized_model = serializer.deserialize(serialized_dict)
         >>> predictions = deserialized_model.predict(X_test)
         """
+        # Version control check
+        self.check_version(data.get("producer_version"))
+
         estimator_class = data["estimator_class"]
         if estimator_class in NOT_SUPPORTED_ESTIMATORS:
             raise UnsupportedEstimatorError(
