@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Tuple, Type, Optional
 import numpy as np
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 
+from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.discovery import all_estimators
@@ -24,8 +25,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
     "AdaBoostRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
     "BaggingRegressor",  # Object of type DecisionTreeRegressor is not JSON serializable
-    "DecisionTreeRegressor",  # Object of type Tree is not JSON serializable
-    "ExtraTreeRegressor",  # Object of type Tree is not JSON serializable
     "ExtraTreesRegressor",  # Object of type ExtraTreeRegressor is not JSON serializable
     "GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
@@ -39,7 +38,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "RegressorChain",  # _BaseChain.__init__() missing 1 required positional argument: 'base_estimator'
     "StackingRegressor",  # StackingRegressor.__init__() missing 1 required positional argument: 'estimators'
     "TransformedTargetRegressor",  # Object of type LinearRegression is not JSON serializable
-    "DecisionTreeClassifier",  # Object of type _Tree is not JSON serializable
     "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
     "VotingRegressor",  # VotingRegressor.__init__() missing 1 required positional argument: 'estimators'
     # Classifiers:
@@ -47,8 +45,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "BaggingClassifier",  # Object of type DecisionTreeClassifier is not JSON serializable
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
     "ClassifierChain",  # ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
-    "DecisionTreeClassifier",  # Object of type _Tree is not JSON serializable
-    "ExtraTreeClassifier",  # Object of type _Tree is not JSON serializable
     "ExtraTreesClassifier",  # Object of type ExtraTreeClassifier is not JSON serializable
     "FixedThresholdClassifier",  # FixedThresholdClassifier.__init__() missing 1 required positional argument: 'estimator'
     "GaussianProcessClassifier",  # Object of type OneVsRestClassifier is not JSON serializable
@@ -236,6 +232,57 @@ class SklearnSerializer(ModelSerializer):
         ]
 
     @staticmethod
+    def _serialize_tree(tree: Tree) -> Dict[str, Any]:
+        """
+        Serializes a sklearn.tree._tree.Tree object to a dictionary.
+
+        Parameters:
+            tree (sklearn.tree._tree.Tree): The internal tree structure from a fitted tree-based model (e.g., model.tree_)
+
+        Returns:
+            dict: Serialized tree attributes
+        """
+        state = tree.__getstate__()
+
+        return {
+            "n_features": tree.n_features,
+            "n_outputs": tree.n_outputs,
+            "n_classes": tree.n_classes.tolist(),
+            "state": {
+                k: (v.tolist() if hasattr(v, "tolist") else v) for k, v in state.items()
+            },
+            "nodes_dtype": [list(t) for t in state["nodes"].dtype.descr],  # for JSON
+        }
+
+    @staticmethod
+    def _deserialize_tree(tree_data: Dict[str, Any]) -> Tree:
+        """
+        Deserializes a dictionary representation of a tree back to a sklearn.tree._tree.Tree object.
+        """
+        tree = Tree(
+            tree_data["n_features"],
+            np.array(tree_data["n_classes"], dtype=np.intp),
+            tree_data["n_outputs"],
+        )
+
+        state = {}
+        for key, value in tree_data["state"].items():
+            if key == "nodes":
+                # Restore dtype
+                nodes_dtype_descr = [
+                    tuple(field) for field in tree_data["nodes_dtype"] if field[0] != ""
+                ]
+                nodes_dtype = np.dtype(nodes_dtype_descr)
+                if isinstance(value, list) and isinstance(value[0], list):
+                    value = [tuple(row) for row in value]
+                state["nodes"] = np.array(value, dtype=nodes_dtype)
+            else:
+                state[key] = np.array(value)
+
+        tree.__setstate__(state)
+        return tree
+
+    @staticmethod
     def _convert_to_serializable_types(value: Any) -> Any:
         """
         Convert a value to a serializable type.
@@ -250,6 +297,10 @@ class SklearnSerializer(ModelSerializer):
         Any
             The serializable representation of the value.
         """
+        if isinstance(value, (Tree)):
+            # If the value is a Tree object, serialize it to a dictionary
+            return SklearnSerializer._serialize_tree(value)
+
         if isinstance(value, dict):
             # Scikit-learn estimators (e.g., LogisticRegressionCV) may use non-string types
             # (such as np.int64 or float) as dictionary keys for attributes like `coefs_paths_`.
@@ -539,11 +590,15 @@ class SklearnSerializer(ModelSerializer):
             attr_type = data["attribute_types"].get(attribute)
             # Get dtype if available
             attr_dtype = data.get("attribute_dtypes", {}).get(attribute)
-            # Pass both value and attr_type to _convert_to_sklearn_types
-            setattr(
-                model,
-                attribute,
-                self._convert_to_sklearn_types(value, attr_type, attr_dtype),
-            )
+            # Handle tree_ separately
+            if attr_type == "Tree":
+                model.tree_ = SklearnSerializer._deserialize_tree(value)
+            else:
+                # Pass both value and attr_type to _convert_to_sklearn_types
+                setattr(
+                    model,
+                    attribute,
+                    self._convert_to_sklearn_types(value, attr_type, attr_dtype),
+                )
 
         return model
