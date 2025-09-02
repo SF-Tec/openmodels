@@ -13,6 +13,7 @@ from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: igno
 import scipy.stats  # type: ignore
 
 import sklearn
+from sklearn._loss.loss import HalfGammaLoss
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
@@ -32,7 +33,7 @@ TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
-    "GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
+    #"GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
     # https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/_loss/loss.py
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
     "GradientBoostingRegressor",  # Object of type RandomState is not JSON serializable
@@ -357,6 +358,7 @@ class SklearnSerializer(ModelSerializer):
 
         # Dispatch table
         handlers = [
+            (HalfGammaLoss, lambda _: {"__half_gamma_loss__": True}),
             (rv_continuous_frozen, self._serialize_scipy_dist),
             (type, self._serialize_type_object),
             (slice, self._serialize_slice_object),
@@ -444,6 +446,9 @@ class SklearnSerializer(ModelSerializer):
         Convert a JSON-deserialized value to its scikit-learn type.
 
         """
+        if isinstance(value, dict) and "__half_gamma_loss__" in value:
+            return HalfGammaLoss()
+    
         if isinstance(value, dict) and value.get("__scipy_dist__"):
             dist = getattr(scipy.stats, value["dist_name"])
             return dist(*value["args"], **value["kwargs"])
@@ -679,7 +684,22 @@ class SklearnSerializer(ModelSerializer):
 
         # We losely follow the ONNX standard for the serialized model.
         # https://github.com/onnx/onnx/blob/main/docs/IR.md
-
+        result = {
+            "attributes": dict(
+                zip(filtered_attribute_keys, serializable_attribute_values)
+            ),
+            "attribute_types": attribute_types_map,
+            "attribute_dtypes": attribute_dtypes_map,
+            "estimator_class": model.__class__.__name__,
+            "params": serializable_params,
+            "param_types": param_types,
+            "param_dtypes": param_dtypes,
+            "producer_name": model.__module__.split(".")[0],
+            "producer_version": getattr(model, "_sklearn_version", None),
+            "model_version": getattr(model, "_sklearn_version", None),
+            "domain": "sklearn",
+        }
+        print(result)
         return {
             "attributes": dict(
                 zip(filtered_attribute_keys, serializable_attribute_values)
