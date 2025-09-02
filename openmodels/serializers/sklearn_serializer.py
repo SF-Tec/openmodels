@@ -684,7 +684,7 @@ class SklearnSerializer(ModelSerializer):
 
         # We losely follow the ONNX standard for the serialized model.
         # https://github.com/onnx/onnx/blob/main/docs/IR.md
-    
+
         return {
             "attributes": dict(
                 zip(filtered_attribute_keys, serializable_attribute_values)
