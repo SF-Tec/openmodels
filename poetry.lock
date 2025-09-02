@@ -1062,7 +1062,6 @@ cleo = ">=2.1.0,<3.0.0"
 crashtest = ">=0.4.1,<0.5.0"
 dulwich = ">=0.21.2,<0.22.0"
 fastjsonschema = ">=2.18.0,<3.0.0"
-importlib-metadata = {version = ">=4.4", markers = "python_version < \"3.10\""}
 installer = ">=0.7.0,<0.8.0"
 keyring = ">=24.0.0,<25.0.0"
 packaging = ">=23.1"
@@ -1810,5 +1809,5 @@ type = ["pytest-mypy"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.9,<4.0"
-content-hash = "6f4b54a564feef437aae546a7c9e97ad2dc777f3a32c35d9b254a26f05c2f7d1"
+python-versions = ">=3.10,<4.0"
+content-hash = "0f0eb5737de591dc3cc8c44358f4407889e00ed9a7723946c576ac91c305206c"
