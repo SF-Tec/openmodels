@@ -33,7 +33,7 @@ TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
-    #"GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
+    # "GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
     # https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/_loss/loss.py
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
     "GradientBoostingRegressor",  # Object of type RandomState is not JSON serializable
@@ -448,7 +448,7 @@ class SklearnSerializer(ModelSerializer):
         """
         if isinstance(value, dict) and "__half_gamma_loss__" in value:
             return HalfGammaLoss()
-    
+
         if isinstance(value, dict) and value.get("__scipy_dist__"):
             dist = getattr(scipy.stats, value["dist_name"])
             return dist(*value["args"], **value["kwargs"])
