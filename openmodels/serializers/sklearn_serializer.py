@@ -299,12 +299,8 @@ class SklearnSerializer(ModelSerializer):
         csr_value = csr_matrix(value)
         serialized_sparse_matrix = {
             "data": self._array_to_list(csr_value.data),
-            "indptr": self._array_to_list(
-                csr_value.indptr.astype(np.int32)
-            ),
-            "indices": self._array_to_list(
-                csr_value.indices.astype(np.int32)
-            ),
+            "indptr": self._array_to_list(csr_value.indptr.astype(np.int32)),
+            "indices": self._array_to_list(csr_value.indices.astype(np.int32)),
             "shape": self._array_to_list(csr_value.shape),
         }
         return serialized_sparse_matrix
@@ -619,9 +615,7 @@ class SklearnSerializer(ModelSerializer):
 
         # Generate attribute types with nested structure.
         # These types are used to convert the serialized attributes back to their original types.
-        attribute_types = [
-            self.get_nested_types(value) for value in attribute_values
-        ]
+        attribute_types = [self.get_nested_types(value) for value in attribute_values]
 
         attribute_dtypes_map = {
             key: self.get_dtype(value)
