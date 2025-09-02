@@ -206,6 +206,7 @@ class SklearnSerializer(ModelSerializer):
         A list of supported types for serialization.
     """
 
+    @staticmethod
     def all_estimators(
         type_filter: Optional[str] = None,
     ) -> List[Tuple[str, Type[BaseEstimator]]]:
@@ -316,7 +317,7 @@ class SklearnSerializer(ModelSerializer):
             "kwargs": value.kwds,
         }
 
-    def _convert_to_serializable_types(self, value: type) -> Dict[str, Any]:
+    def _convert_to_serializable_types(self, value: Any) -> Any:
         """
         Converts a value to a serializable type.
         """
