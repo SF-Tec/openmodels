@@ -9,8 +9,8 @@ from typing import Any, Callable, Dict, List, Tuple, Type, Optional
 import numpy as np
 import inspect
 from scipy.sparse import _csr, csr_matrix  # type: ignore
-from scipy.stats._distn_infrastructure import rv_continuous_frozen # type: ignore
-import scipy.stats # type: ignore
+from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: ignore
+import scipy.stats  # type: ignore
 
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
@@ -43,7 +43,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
     "KNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
-    "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict' 
+    "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OneVsRestClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
@@ -159,7 +159,11 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "TunedThresholdClassifierCV": ["_curve_scorer"],
     # Transformers:
     "ColumnTransformer": ["_columns", "_remainder"],
-    "OneHotEncoder": ["_infrequent_enabled", "_drop_idx_after_grouping", "_n_features_outs"],
+    "OneHotEncoder": [
+        "_infrequent_enabled",
+        "_drop_idx_after_grouping",
+        "_n_features_outs",
+    ],
     "OrdinalEncoder": ["_missing_indices", "_infrequent_enabled"],
     "KBinsDiscretizer": ["_encoder"],
     "KernelPCA": ["_centerer"],
@@ -297,7 +301,7 @@ class SklearnSerializer(ModelSerializer):
         if isinstance(value, type):
             # Serialize Python type objects as their string name
             return {"__type__": True, "type_name": value.__name__}
-    
+
         if isinstance(value, slice):
             # Serialize slice objects as a dict
             return {
@@ -335,9 +339,11 @@ class SklearnSerializer(ModelSerializer):
                 str(k): self._convert_to_serializable_types(v) for k, v in value.items()
             }
         if isinstance(value, (list, tuple)):
-              # If the list contains tuples of (name, estimator, columns), serialize the estimator
+            # If the list contains tuples of (name, estimator, columns), serialize the estimator
             if value and all(
-                isinstance(item, tuple) and len(item) == 3 and isinstance(item[1], BaseEstimator)
+                isinstance(item, tuple)
+                and len(item) == 3
+                and isinstance(item[1], BaseEstimator)
                 for item in value
             ):
                 return [
@@ -346,7 +352,9 @@ class SklearnSerializer(ModelSerializer):
                 ]
             # If the list contains tuples of (name, estimator), serialize each estimator
             if value and all(
-                isinstance(item, tuple) and len(item) == 2 and isinstance(item[1], BaseEstimator)
+                isinstance(item, tuple)
+                and len(item) == 2
+                and isinstance(item[1], BaseEstimator)
                 for item in value
             ):
                 return [
@@ -400,15 +408,17 @@ class SklearnSerializer(ModelSerializer):
         if isinstance(value, dict) and value.get("__scipy_dist__"):
             dist = getattr(scipy.stats, value["dist_name"])
             return dist(*value["args"], **value["kwargs"])
-        
+
         if isinstance(value, dict) and "estimator_class" in value:
             # Recursively deserialize fitted estimators
             return self.deserialize(value)
-    
+
         if isinstance(value, dict) and value.get("__type__"):
             # Deserialize Python type objects from their string name
-            return getattr(__builtins__, value["type_name"], float)  # Default to float if not found
-    
+            return getattr(
+                __builtins__, value["type_name"], float
+            )  # Default to float if not found
+
         if isinstance(value, dict) and value.get("__slice__"):
             # Deserialize slice objects
             return slice(value["start"], value["stop"], value["step"])
@@ -420,7 +430,7 @@ class SklearnSerializer(ModelSerializer):
             for k in params:
                 params[k] = self._convert_to_sklearn_types(params[k], None, None)
             return estimator_class(**params)
-    
+
         # Recursive case: if attr_type is a list, process each element in value
         if isinstance(attr_type, list) and isinstance(value, list):
             return [
@@ -622,11 +632,15 @@ class SklearnSerializer(ModelSerializer):
         # Serialize model parameters
         params = model.get_params()
         serializable_params = self._convert_to_serializable_types(params)
-        param_types = {param_name: SklearnSerializer.get_nested_types(param_value) for param_name, param_value in params.items()}
+        param_types = {
+            param_name: SklearnSerializer.get_nested_types(param_value)
+            for param_name, param_value in params.items()
+        }
         param_dtypes = {
             param_name: SklearnSerializer.get_dtype(param_value)
             for param_name, param_value in params.items()
-            if isinstance(param_value, np.ndarray) or (isinstance(param_value, (list, tuple)) and param_value)
+            if isinstance(param_value, np.ndarray)
+            or (isinstance(param_value, (list, tuple)) and param_value)
         }
 
         # We losely follow the ONNX standard for the serialized model.
@@ -681,7 +695,7 @@ class SklearnSerializer(ModelSerializer):
             raise UnsupportedEstimatorError(
                 f"Unsupported estimator class: {estimator_class}"
             )
-        
+
         # Reconstruct params with correct types/dtypes
         params = data.get("params", {})
         param_types = data.get("param_types", {})
@@ -691,7 +705,7 @@ class SklearnSerializer(ModelSerializer):
         estimator_cls = ALL_ESTIMATORS[estimator_class]
         valid_args = list(inspect.signature(estimator_cls.__init__).parameters.keys())
         # Remove 'self' if present
-        valid_args = [arg for arg in valid_args if arg != 'self']
+        valid_args = [arg for arg in valid_args if arg != "self"]
 
         reconstructed_params = {}
         for param_name, param_value in params.items():
@@ -707,10 +721,11 @@ class SklearnSerializer(ModelSerializer):
                     for name, est in param_value
                 ]
             else:
-                reconstructed_params[param_name] = self._convert_to_sklearn_types(param_value, param_type, param_dtype)
+                reconstructed_params[param_name] = self._convert_to_sklearn_types(
+                    param_value, param_type, param_dtype
+                )
         model = estimator_cls(**reconstructed_params)
 
-        
         for attribute, value in data["attributes"].items():
             attr_type = data["attribute_types"].get(attribute)
             attr_dtype = data.get("attribute_dtypes", {}).get(attribute)
