@@ -684,22 +684,7 @@ class SklearnSerializer(ModelSerializer):
 
         # We losely follow the ONNX standard for the serialized model.
         # https://github.com/onnx/onnx/blob/main/docs/IR.md
-        result = {
-            "attributes": dict(
-                zip(filtered_attribute_keys, serializable_attribute_values)
-            ),
-            "attribute_types": attribute_types_map,
-            "attribute_dtypes": attribute_dtypes_map,
-            "estimator_class": model.__class__.__name__,
-            "params": serializable_params,
-            "param_types": param_types,
-            "param_dtypes": param_dtypes,
-            "producer_name": model.__module__.split(".")[0],
-            "producer_version": getattr(model, "_sklearn_version", None),
-            "model_version": getattr(model, "_sklearn_version", None),
-            "domain": "sklearn",
-        }
-        print(result)
+    
         return {
             "attributes": dict(
                 zip(filtered_attribute_keys, serializable_attribute_values)
