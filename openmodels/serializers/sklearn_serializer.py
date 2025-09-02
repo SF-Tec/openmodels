@@ -9,8 +9,8 @@ from typing import Any, Callable, Dict, List, Tuple, Type, Optional
 import numpy as np
 import inspect
 from scipy.sparse import _csr, csr_matrix  # type: ignore
-from scipy.stats._distn_infrastructure import rv_continuous_frozen
-import scipy.stats
+from scipy.stats._distn_infrastructure import rv_continuous_frozen # type: ignore
+import scipy.stats # type: ignore
 
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
@@ -689,7 +689,7 @@ class SklearnSerializer(ModelSerializer):
 
         # Get valid constructor arguments for the estimator
         estimator_cls = ALL_ESTIMATORS[estimator_class]
-        valid_args = inspect.signature(estimator_cls.__init__).parameters.keys()
+        valid_args = list(inspect.signature(estimator_cls.__init__).parameters.keys())
         # Remove 'self' if present
         valid_args = [arg for arg in valid_args if arg != 'self']
 
