@@ -28,7 +28,7 @@ ALL_ESTIMATORS = {
     name: cls for name, cls in all_estimators() if issubclass(cls, BaseEstimator)
 }
 
-TESTED_VERSIONS = ["1.6.1","1.7.1"]
+TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
@@ -211,7 +211,7 @@ class SklearnSerializer(ModelSerializer):
         A list of supported types for serialization.
     """
 
-    def check_version(self, stored_version: str) -> None:
+    def check_version(self, stored_version: Optional[str]) -> None:
         """
         Check compatibility between stored scikit-learn version and the current environment.
 
