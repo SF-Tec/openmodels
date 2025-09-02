@@ -34,22 +34,15 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "GradientBoostingRegressor",  # Object of type RandomState is not JSON serializable
     "HistGradientBoostingRegressor",  # Object of type HalfSquaredError is not JSON serializable
     "IsotonicRegression",  # Object of type interp1d is not JSON serializable
-    #"MultiOutputRegressor",  # MultiOutputRegressor.__init__() missing 1 required positional argument: 'estimator'
     "PoissonRegressor",  # Object of type HalfPoissonLoss is not JSON serializable
-    #"RegressorChain",  # _BaseChain.__init__() missing 1 required positional argument: 'base_estimator'
-    #"StackingRegressor",  # StackingRegressor.__init__() missing 1 required positional argument: 'estimators'
     "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
-    #"VotingRegressor",  # VotingRegressor.__init__() missing 1 required positional argument: 'estimators'
     # Classifiers:
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
-    #"ClassifierChain",  # ClassifierChain.__init__() missing 1 required positional argument: 'base_estimator'
-    #"FixedThresholdClassifier",  # FixedThresholdClassifier.__init__() missing 1 required positional argument: 'estimator'
     "GaussianProcessClassifier",  # Object of type OneVsRestClassifier is not JSON serializable
     "GradientBoostingClassifier",  # Object of type RandomState is not JSON serializable
     "HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
     "KNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
-    #"MultiOutputClassifier",  # MultiOutputClassifier.__init__() missing 1 required positional argument: 'estimator'
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict' 
     "OneVsRestClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
@@ -59,7 +52,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "RidgeClassifierCV",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
-    #"AttributeError: 'dict' object has no attribute 'predict_proba'",  # ValueError: You must pass an estimator to SelfTrainingClassifier. Use `estimator`.
     "StackingClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelEncoder
     "TunedThresholdClassifierCV",  # TypeError: Object of type _CurveScorer is not JSON serializable
     "VotingClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelEncoder
@@ -87,22 +79,16 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "OneHotEncoder",  # ValueError:
-    #"OrdinalEncoder",  # Object of type type is not JSON serializable
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    #"RFE",  # RFE.__init__() missing 1 required positional argument: 'estimator'
-    #"RFECV",  # RFECV.__init__() missing 1 required positional argument: 'estimator'
     "RadiusNeighborsTransformer",  # Object of type KDTree is not JSON serializable
     "RandomTreesEmbedding",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
     "SelectFdr",  # Object of type function is not JSON serializable
     "SelectFpr",  # Object of type function is not JSON serializable
-    #"SelectFromModel",  # SelectFromModel.__init__() missing 1 required positional argument: 'estimator'
     "SelectFwe",  # Object of type function is not JSON serializable
     "SelectKBest",  # Object of type function is not JSON serializable
     "SelectPercentile",  # Object of type function is not JSON serializable
-    #"SequentialFeatureSelector",  # SequentialFeatureSelector.__init__() missing 1 required positional argument: 'estimator'
     "SimpleImputer",  # Object of type Float64DType is not JSON serializable
     "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
-    #"SparseCoder",  # SparseCoder.__init__() missing 1 required positional argument: 'dictionary'
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
@@ -110,14 +96,10 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Others:
     "BayesianGaussianMixture",  # Object of type ndarray is not JSON serializable
     "CountVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
-    #"FrozenEstimator",  # FrozenEstimator.__init__() missing 1 required positional argument: 'estimator'
-    #"GridSearchCV",  # GridSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_grid'
     "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
     "KernelDensity",  # Object of type KDTree is not JSON serializable
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
     "NearestNeighbors",  # Object of type KDTree is not JSON serializable
-    #"Pipeline",  # Pipeline.__init__() missing 1 required positional argument: 'steps'
-    #"RandomizedSearchCV",  # RandomizedSearchCV.__init__() missing 2 required positional arguments: 'estimator' and 'param_distributions'
     "SGDOneClassSVM",  # Object of type Hinge is not JSON serializable
     "TfidfVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
 ]
@@ -742,5 +724,5 @@ class SklearnSerializer(ModelSerializer):
                 attribute,
                 self._convert_to_sklearn_types(value, attr_type, attr_dtype),
             )
-            
+
         return model
