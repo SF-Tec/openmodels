@@ -110,14 +110,12 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "SelectFwe",  # Object of type function is not JSON serializable
     "SelectKBest",  # Object of type function is not JSON serializable
     "SelectPercentile",  # Object of type function is not JSON serializable
-    # "SimpleImputer",  # Object of type Float64DType is not JSON serializable
     "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
     "TfidfTransformer",  # ValueError
     # Others:
-    "BayesianGaussianMixture",  # Object of type ndarray is not JSON serializable
     "CountVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
