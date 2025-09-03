@@ -13,7 +13,18 @@ from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: igno
 import scipy.stats  # type: ignore
 
 import sklearn
-from sklearn._loss.loss import HalfGammaLoss, HalfSquaredError, BaseLoss
+from sklearn._loss.loss import (
+    AbsoluteError,
+    HalfBinomialLoss,
+    HalfGammaLoss,
+    HalfMultinomialLoss,
+    HalfPoissonLoss,
+    HalfSquaredError,
+    HalfTweedieLoss,
+    HalfTweedieLossIdentity,
+    PinballLoss,
+    BaseLoss,
+)
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
@@ -26,8 +37,15 @@ import warnings
 ConverterFunc = Callable[[Any], Any]
 
 LOSS_CLASS_REGISTRY = {
+    "AbsoluteError": AbsoluteError,
+    "HalfBinomialLoss": HalfBinomialLoss,
     "HalfGammaLoss": HalfGammaLoss,
+    "HalfMultinomialLoss": HalfMultinomialLoss,
+    "HalfPoissonLoss": HalfPoissonLoss,
     "HalfSquaredError": HalfSquaredError,
+    "HalfTweedieLoss": HalfTweedieLoss,
+    "HalfTweedieLossIdentity": HalfTweedieLossIdentity,
+    "PinballLoss": PinballLoss,
 }
 
 ALL_ESTIMATORS = {
@@ -40,9 +58,8 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
     "GradientBoostingRegressor",  # Object of type RandomState is not JSON serializable
-    "HistGradientBoostingRegressor",  # Object of type HalfSquaredError is not JSON serializable
+    "HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
     "IsotonicRegression",  # Object of type interp1d is not JSON serializable
-    "PoissonRegressor",  # Object of type HalfPoissonLoss is not JSON serializable
     "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
     # Classifiers:
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
@@ -130,7 +147,12 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "NuSVR": ["_sparse", "_gamma", "_n_support", "_probA", "_probB"],
     "TweedieRegressor": ["_base_loss"],
     "GaussianProcessRegressor": ["kernel_"],
-    "HistGradientBoostingRegressor": ["_loss"],
+    "HistGradientBoostingRegressor": [
+        "_loss",
+        "_preprocessor",
+        "_baseline_prediction",
+        "_predictors",
+    ],
     "RadiusNeighborsRegressor": ["_fit_method", "_fit_X", "_y"],
     "CCA": ["_x_mean", "_predict_1d"],
     "GammaRegressor": ["_base_loss"],
