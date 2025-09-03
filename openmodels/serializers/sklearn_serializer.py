@@ -57,7 +57,7 @@ TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
-    "GradientBoostingRegressor",  # Object of type RandomState is not JSON serializable
+    "GradientBoostingRegressor",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
     "IsotonicRegression",  # Object of type interp1d is not JSON serializable
     "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
@@ -379,6 +379,12 @@ class SklearnSerializer(ModelSerializer):
             ),
             (type, lambda v: {"type_name": v.__name__}),
             (slice, lambda v: {"start": v.start, "stop": v.stop, "step": v.step}),
+            (
+                np.random.RandomState,
+                lambda v: [
+                    self._convert_to_serializable_types(x) for x in v.get_state()
+                ],
+            ),
             (Tree, self._serialize_tree),
             (_csr.csr_matrix, self._serialize_csr_matrix),
             (np.generic, lambda v: v.item()),
@@ -413,33 +419,8 @@ class SklearnSerializer(ModelSerializer):
                 str(k): self._convert_to_serializable_types(v) for k, v in value.items()
             }
         if isinstance(value, (list, tuple)):
-            # If the list contains tuples of (name, estimator, columns), serialize the estimator
-            if value and all(
-                isinstance(item, tuple)
-                and len(item) == 3
-                and isinstance(item[1], BaseEstimator)
-                for item in value
-            ):
-                return [
-                    (item[0], self._convert_to_serializable_types(item[1]), item[2])
-                    for item in value
-                ]
-            # If the list contains tuples of (name, estimator), serialize each estimator
-            if value and all(
-                isinstance(item, tuple)
-                and len(item) == 2
-                and isinstance(item[1], BaseEstimator)
-                for item in value
-            ):
-                return [
-                    (item[0], self._convert_to_serializable_types(item[1]))
-                    for item in value
-                ]
-            # If the list contains BaseEstimator objects, serialize each one
-            if value and all(isinstance(item, BaseEstimator) for item in value):
-                return [self._convert_to_serializable_types(item) for item in value]
-            # Otherwise use the default array to list conversion
-            return self._array_to_list(value)
+            # Recursively convert each element to a serializable type
+            return [self._convert_to_serializable_types(item) for item in value]
 
         if isinstance(value, (np.ndarray)):
             # Special handling for arrays of estimators
@@ -464,18 +445,6 @@ class SklearnSerializer(ModelSerializer):
 
         """
 
-        if isinstance(value, dict) and "estimator_class" in value:
-            # Recursively deserialize fitted estimators
-            return self.deserialize(value)
-
-        if isinstance(value, dict) and "__template__" in value:
-            estimator_class = ALL_ESTIMATORS[value["__template__"]]
-            params = value.get("params", {})
-            # Recursively convert all params
-            for k in params:
-                params[k] = self._convert_to_sklearn_types(params[k], None, None)
-            return estimator_class(**params)
-
         # Recursive case: if attr_type is a list, process each element in value
         if isinstance(attr_type, list) and isinstance(value, list):
             return [
@@ -484,6 +453,9 @@ class SklearnSerializer(ModelSerializer):
             ]
 
         if isinstance(attr_type, str):
+            if attr_type == "RandomState":
+                # Deserialize RandomState objects
+                return np.random.RandomState(value)
             if attr_type == "type":
                 # Deserialize Python type objects from their string name
                 return getattr(
@@ -527,13 +499,13 @@ class SklearnSerializer(ModelSerializer):
 
             if attr_type in converters:
                 return converters[attr_type](value)
+
             if attr_type in ALL_ESTIMATORS:
                 # This is an estimator type
-                if isinstance(value, dict):
-                    if "__template__" in value:
-                        estimator_class = ALL_ESTIMATORS[value["__template__"]]
-                        return estimator_class(**value["params"])
-                    return self.deserialize(value)
+                if "__template__" in value:
+                    estimator_class = ALL_ESTIMATORS[value["__template__"]]
+                    return estimator_class(**value["params"])
+                return self.deserialize(value)
 
             return value  # Return as-is if no specific conversion is needed
 
@@ -555,10 +527,8 @@ class SklearnSerializer(ModelSerializer):
         """
         if isinstance(array, np.ndarray):
             return self._array_to_list(array.tolist())
-        elif isinstance(array, list):
+        elif isinstance(array, (list, tuple)):
             return [self._array_to_list(item) for item in array]
-        elif isinstance(array, tuple):
-            return tuple(self._array_to_list(item) for item in array)
         elif isinstance(array, np.generic):
             return array.item()
         else:
@@ -779,7 +749,14 @@ class SklearnSerializer(ModelSerializer):
             # Special handling for Pipeline steps
             if estimator_class == "Pipeline" and param_name == "steps":
                 reconstructed_params[param_name] = [
-                    (name, self._convert_to_sklearn_types(est, None, None))
+                    (
+                        name,
+                        (
+                            self.deserialize(est)
+                            if isinstance(est, dict) and "estimator_class" in est
+                            else est
+                        ),
+                    )
                     for name, est in param_value
                 ]
             else:
@@ -794,6 +771,8 @@ class SklearnSerializer(ModelSerializer):
             # Handle tree_ separately
             if attr_type == "Tree":
                 model.tree_ = self._deserialize_tree(value)
+                continue
+            if estimator_class == "Pipeline" and attribute == "steps":
                 continue
             # Use _convert_to_sklearn_types for all attributes
             setattr(
