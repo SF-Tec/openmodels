@@ -13,7 +13,7 @@ from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: igno
 import scipy.stats  # type: ignore
 
 import sklearn
-from sklearn._loss.loss import HalfGammaLoss
+from sklearn._loss.loss import HalfGammaLoss, HalfSquaredError, BaseLoss
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
@@ -24,6 +24,11 @@ from openmodels.protocols import ModelSerializer
 import warnings
 
 ConverterFunc = Callable[[Any], Any]
+
+LOSS_CLASS_REGISTRY = {
+    "HalfGammaLoss": HalfGammaLoss,
+    "HalfSquaredError": HalfSquaredError,
+}
 
 ALL_ESTIMATORS = {
     name: cls for name, cls in all_estimators() if issubclass(cls, BaseEstimator)
@@ -307,24 +312,6 @@ class SklearnSerializer(ModelSerializer):
         tree.__setstate__(state)
         return tree
 
-    def _serialize_type_object(self, value: Type) -> Dict[str, Any]:
-        """
-        Serializes a Python type object to a dictionary.
-
-        """
-        return {"__type__": True, "type_name": value.__name__}
-
-    def _serialize_slice_object(self, value: slice) -> Dict[str, Any]:
-        """
-        Serializes a slice object to a dictionary.
-        """
-        return {
-            "__slice__": True,
-            "start": value.start,
-            "stop": value.stop,
-            "step": value.step,
-        }
-
     def _serialize_csr_matrix(self, value: _csr.csr_matrix) -> Dict[str, Any]:
         """
         Serializes a sparse CSR matrix to a dictionary.
@@ -338,16 +325,23 @@ class SklearnSerializer(ModelSerializer):
         }
         return serialized_sparse_matrix
 
-    def _serialize_scipy_dist(self, value: rv_continuous_frozen) -> Dict[str, Any]:
+    def serialize_loss_object(self, value: BaseLoss) -> Dict[str, Any]:
         """
-        Serializes a scipy.stats.rv_continuous_frozen object to a dictionary.
+        Serialize a scikit-learn loss object using its constructor parameters.
+
+        Parameters:
+            obj: The loss object instance.
+
+        Returns:
+            dict: Serialized representation.
         """
-        return {
-            "__scipy_dist__": True,
-            "dist_name": value.dist.name,
-            "args": value.args,
-            "kwargs": value.kwds,
+        cls = type(value)
+        params = {
+            k: getattr(value, k, None)
+            for k in inspect.signature(cls.__init__).parameters
+            if k != "self"
         }
+        return {"params": params}
 
     def _convert_to_serializable_types(self, value: Any) -> Any:
         """
@@ -356,10 +350,13 @@ class SklearnSerializer(ModelSerializer):
 
         # Dispatch table
         handlers = [
-            (HalfGammaLoss, lambda _: {"__half_gamma_loss__": True}),
-            (rv_continuous_frozen, self._serialize_scipy_dist),
-            (type, self._serialize_type_object),
-            (slice, self._serialize_slice_object),
+            (BaseLoss, self.serialize_loss_object),
+            (
+                rv_continuous_frozen,
+                lambda v: {"dist_name": v.dist.name, "args": v.args, "kwargs": v.kwds},
+            ),
+            (type, lambda v: {"type_name": v.__name__}),
+            (slice, lambda v: {"start": v.start, "stop": v.stop, "step": v.step}),
             (Tree, self._serialize_tree),
             (_csr.csr_matrix, self._serialize_csr_matrix),
             (np.generic, lambda v: v.item()),
@@ -444,26 +441,10 @@ class SklearnSerializer(ModelSerializer):
         Convert a JSON-deserialized value to its scikit-learn type.
 
         """
-        if isinstance(value, dict) and "__half_gamma_loss__" in value:
-            return HalfGammaLoss()
-
-        if isinstance(value, dict) and value.get("__scipy_dist__"):
-            dist = getattr(scipy.stats, value["dist_name"])
-            return dist(*value["args"], **value["kwargs"])
 
         if isinstance(value, dict) and "estimator_class" in value:
             # Recursively deserialize fitted estimators
             return self.deserialize(value)
-
-        if isinstance(value, dict) and value.get("__type__"):
-            # Deserialize Python type objects from their string name
-            return getattr(
-                __builtins__, value["type_name"], float
-            )  # Default to float if not found
-
-        if isinstance(value, dict) and value.get("__slice__"):
-            # Deserialize slice objects
-            return slice(value["start"], value["stop"], value["step"])
 
         if isinstance(value, dict) and "__template__" in value:
             estimator_class = ALL_ESTIMATORS[value["__template__"]]
@@ -481,6 +462,24 @@ class SklearnSerializer(ModelSerializer):
             ]
 
         if isinstance(attr_type, str):
+            if attr_type == "type":
+                # Deserialize Python type objects from their string name
+                return getattr(
+                    __builtins__, value["type_name"], float
+                )  # Default to float if not found
+
+            if attr_type in LOSS_CLASS_REGISTRY:
+                loss_cls = LOSS_CLASS_REGISTRY[attr_type]
+                params = value.get("params", {})
+                return loss_cls(**params)
+
+            if attr_type == "slice":
+                return slice(value["start"], value["stop"], value["step"])
+
+            if attr_type == "scipy_dist":
+                dist = getattr(scipy.stats, value["dist_name"])
+                return dist(*value["args"], **value["kwargs"])
+
             if attr_type == "csr_matrix":
                 # Ensure all sparse matrix components are of correct dtype
                 return csr_matrix(
@@ -666,6 +665,10 @@ class SklearnSerializer(ModelSerializer):
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
+        attributes_map = dict(
+            zip(filtered_attribute_keys, serializable_attribute_values)
+        )
+
         # Serialize model parameters
         params = model.get_params()
         serializable_params = self._convert_to_serializable_types(params)
@@ -682,11 +685,8 @@ class SklearnSerializer(ModelSerializer):
 
         # We losely follow the ONNX standard for the serialized model.
         # https://github.com/onnx/onnx/blob/main/docs/IR.md
-
         return {
-            "attributes": dict(
-                zip(filtered_attribute_keys, serializable_attribute_values)
-            ),
+            "attributes": attributes_map,
             "attribute_types": attribute_types_map,
             "attribute_dtypes": attribute_dtypes_map,
             "estimator_class": model.__class__.__name__,
