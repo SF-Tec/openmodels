@@ -30,6 +30,7 @@ from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.discovery import all_estimators
+from sklearn.neighbors import KDTree
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
 from openmodels.protocols import ModelSerializer
@@ -60,21 +61,17 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
     "GradientBoostingRegressor",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
-    # "IsotonicRegression",  # Object of type interp1d is not JSON serializable
-    # "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
     # Classifiers:
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
     "GaussianProcessClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneVsRestClassifier
     "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
-    "KNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OneVsRestClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
     "Perceptron",  # Object of type Hinge is not JSON serializable
-    "RadiusNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "RidgeClassifierCV",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
@@ -95,20 +92,18 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # has an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
     "HashingVectorizer",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
-    "Isomap",  # Object of type KDTree is not JSON serializable
     "KBinsDiscretizer",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
-    "KNeighborsTransformer",  # Object of type KDTree is not JSON serializable
+    "KNeighborsTransformer",  # ValueError:
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
     # an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
     "LinearDiscriminantAnalysis",  # This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
-    "LocallyLinearEmbedding",  # TypeError: Object of type KDTree is not JSON serializable
     "LabelBinarizer",  # LabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
     "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "OneHotEncoder",  # ValueError:
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    "RadiusNeighborsTransformer",  # Object of type KDTree is not JSON serializable
+    "RadiusNeighborsTransformer",  # ValueError:
     "RandomTreesEmbedding",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
     "SelectFdr",  # Object of type function is not JSON serializable
     "SelectFpr",  # Object of type function is not JSON serializable
@@ -125,9 +120,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "BayesianGaussianMixture",  # Object of type ndarray is not JSON serializable
     "CountVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
-    "KernelDensity",  # Object of type KDTree is not JSON serializable
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
-    "NearestNeighbors",  # Object of type KDTree is not JSON serializable
     "SGDOneClassSVM",  # Object of type Hinge is not JSON serializable
     "TfidfVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
 ]
@@ -202,7 +195,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "KBinsDiscretizer": ["_encoder"],
     "KernelPCA": ["_centerer"],
     "KNNImputer": ["_mask_fit_X", "_valid_mask"],
-    "KNeighborsTransformer": ["_fit_method", "_tree"],
+    "KNeighborsTransformer": ["_fit_method", "_tree", "_fit_X"],
     "PowerTransformer": ["_scaler"],
     "RadiusNeighborsTransformer": ["_fit_method", "_tree"],
     "SimpleImputer": ["_fit_dtype"],
@@ -218,7 +211,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_average_path_length_per_tree",
     ],
     "OneClassSVM": ["_sparse", "_n_support", "_probA", "_probB", "_gamma"],
-    "NearestNeighbors": ["_fit_method", "_tree"],
+    "NearestNeighbors": ["_fit_method", "_tree", "_fit_X"],
 }
 
 
@@ -391,6 +384,26 @@ class SklearnSerializer(ModelSerializer):
             "copy": getattr(value, "copy", True),
         }
 
+    def _serialize_kdtree(self, value: KDTree) -> Dict[str, Any]:
+        """
+        Serializes a KDTree object to a dictionary.
+        """
+        # For KDTree, we'll use a simpler approach - just serialize the essential data
+        # and let the tree be reconstructed from the data
+        data = np.array(value.data)
+        return {
+            "data": self._array_to_list(data),
+        }
+
+    def _deserialize_kdtree(self, kdtree_data: Dict[str, Any]) -> KDTree:
+        """
+        Deserializes a dictionary representation of a KDTree back to a KDTree object.
+        """
+        data = np.array(kdtree_data["data"])
+
+        # Create KDTree with data - the tree will be rebuilt automatically
+        return KDTree(data)
+
     def _convert_to_serializable_types(self, value: Any) -> Any:
         """
         Converts a value to a serializable type.
@@ -398,6 +411,7 @@ class SklearnSerializer(ModelSerializer):
 
         # Dispatch table
         handlers = [
+            (KDTree, self._serialize_kdtree),
             (BaseLoss, self.serialize_loss_object),
             (
                 rv_continuous_frozen,
@@ -813,6 +827,10 @@ class SklearnSerializer(ModelSerializer):
             # Handle tree_ separately
             if attr_type == "Tree":
                 model.tree_ = self._deserialize_tree(value)
+                continue
+            # Skip _tree attribute for KDTree - let the transformer recreate it
+            if attr_type == "KDTree":
+                model._tree = self._deserialize_kdtree(value)
                 continue
             if estimator_class == "Pipeline" and attribute == "steps":
                 continue
