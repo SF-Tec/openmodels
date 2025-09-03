@@ -231,7 +231,7 @@ class SklearnSerializer(ModelSerializer):
         A list of supported types for serialization.
     """
 
-    def check_version(self, stored_version: Optional[str]) -> None:
+    def _check_version(self, stored_version: Optional[str]) -> None:
         """
         Check compatibility between stored scikit-learn version and the current environment.
 
@@ -341,7 +341,7 @@ class SklearnSerializer(ModelSerializer):
         }
         return serialized_sparse_matrix
 
-    def serialize_loss_object(self, value: BaseLoss) -> Dict[str, Any]:
+    def _serialize_loss_object(self, value: BaseLoss) -> Dict[str, Any]:
         """
         Serialize a scikit-learn loss object using its constructor parameters.
 
@@ -362,7 +362,7 @@ class SklearnSerializer(ModelSerializer):
             params["power"] = getattr(value, "power", 0.0)
         return {"params": params}
 
-    def serialize_interp1d(self, value: interp1d) -> Dict[str, Any]:
+    def _serialize_interp1d(self, value: interp1d) -> Dict[str, Any]:
         """
         Serialize a scipy.interpolate.interp1d object.
 
@@ -410,12 +410,12 @@ class SklearnSerializer(ModelSerializer):
         # Dispatch table
         handlers = [
             (KDTree, self._serialize_kdtree),
-            (BaseLoss, self.serialize_loss_object),
+            (BaseLoss, self._serialize_loss_object),
             (
                 rv_continuous_frozen,
                 lambda v: {"dist_name": v.dist.name, "args": v.args, "kwargs": v.kwds},
             ),
-            (interp1d, self.serialize_interp1d),
+            (interp1d, self._serialize_interp1d),
             (type, lambda v: {"type_name": v.__name__}),
             (slice, lambda v: {"start": v.start, "stop": v.stop, "step": v.step}),
             (
@@ -588,7 +588,7 @@ class SklearnSerializer(ModelSerializer):
         else:
             return array
 
-    def get_nested_types(self, item: Any) -> Any:
+    def _get_nested_types(self, item: Any) -> Any:
         """
         Recursively determine the type of elements within nested lists.
 
@@ -609,7 +609,7 @@ class SklearnSerializer(ModelSerializer):
 
         """
         if isinstance(item, List) and item:  # If it's a list and not empty
-            return [self.get_nested_types(subitem) for subitem in item]
+            return [self._get_nested_types(subitem) for subitem in item]
         elif isinstance(item, BaseEstimator):
             # For estimators, return their class name instead of just 'BaseEstimator'
             return item.__class__.__name__
@@ -617,7 +617,7 @@ class SklearnSerializer(ModelSerializer):
             # Return the type name if it's not a list or it's an empty list
             return type(item).__name__
 
-    def get_dtype(self, value: Any) -> str:
+    def _get_dtype(self, value: Any) -> str:
         """
         Get the dtype of a numpy array, otherwise return empty string.
         """
@@ -697,10 +697,10 @@ class SklearnSerializer(ModelSerializer):
 
         # Generate attribute types with nested structure.
         # These types are used to convert the serialized attributes back to their original types.
-        attribute_types = [self.get_nested_types(value) for value in attribute_values]
+        attribute_types = [self._get_nested_types(value) for value in attribute_values]
 
         attribute_dtypes_map = {
-            key: self.get_dtype(value)
+            key: self._get_dtype(value)
             for key, value in zip(filtered_attribute_keys, attribute_values)
             if isinstance(value, np.ndarray)  # Only include NumPy arrays
         }
@@ -719,11 +719,11 @@ class SklearnSerializer(ModelSerializer):
         params = model.get_params()
         serializable_params = self._convert_to_serializable_types(params)
         param_types = {
-            param_name: self.get_nested_types(param_value)
+            param_name: self._get_nested_types(param_value)
             for param_name, param_value in params.items()
         }
         param_dtypes = {
-            param_name: self.get_dtype(param_value)
+            param_name: self._get_dtype(param_value)
             for param_name, param_value in params.items()
             if isinstance(param_value, np.ndarray)
             or (isinstance(param_value, (list, tuple)) and param_value)
@@ -774,7 +774,7 @@ class SklearnSerializer(ModelSerializer):
         >>> predictions = deserialized_model.predict(X_test)
         """
         # Version control check
-        self.check_version(data.get("producer_version"))
+        self._check_version(data.get("producer_version"))
 
         estimator_class = data["estimator_class"]
         if estimator_class in NOT_SUPPORTED_ESTIMATORS:
