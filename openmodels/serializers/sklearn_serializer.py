@@ -8,6 +8,7 @@ converted to and from dictionary representations.
 from typing import Any, Callable, Dict, List, Tuple, Type, Optional
 import numpy as np
 import inspect
+from scipy.interpolate import interp1d  # type: ignore
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: ignore
 import scipy.stats  # type: ignore
@@ -59,12 +60,12 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
     "GradientBoostingRegressor",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
-    "IsotonicRegression",  # Object of type interp1d is not JSON serializable
-    "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
+    # "IsotonicRegression",  # Object of type interp1d is not JSON serializable
+    # "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
     # Classifiers:
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
-    "GaussianProcessClassifier",  # Object of type OneVsRestClassifier is not JSON serializable
-    "GradientBoostingClassifier",  # Object of type RandomState is not JSON serializable
+    "GaussianProcessClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneVsRestClassifier
+    "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
     "KNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
@@ -90,15 +91,17 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "DictVectorizer",  # ValueError:
     "FeatureHasher",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
     "FeatureUnion",  # AttributeError: 'dict' object has no attribute 'transform'
-    "GaussianRandomProjection",  # Object of type RandomState is not JSON serializable
+    "GaussianRandomProjection",  # ValueError: setting an array element with a sequence. The requested array
+    # has an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
     "HashingVectorizer",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
     "Isomap",  # Object of type KDTree is not JSON serializable
-    "KBinsDiscretizer",  # Object of type Float64DType is not JSON serializable
+    "KBinsDiscretizer",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
     "KNeighborsTransformer",  # Object of type KDTree is not JSON serializable
-    "LatentDirichletAllocation",  # Object of type RandomState is not JSON serializable
+    "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
+    # an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
     "LinearDiscriminantAnalysis",  # This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
-    "LocallyLinearEmbedding",  # Object of type NearestNeighbors is not JSON serializable"
+    "LocallyLinearEmbedding",  # TypeError: Object of type KDTree is not JSON serializable
     "LabelBinarizer",  # LabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
     "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
@@ -363,7 +366,30 @@ class SklearnSerializer(ModelSerializer):
             for k in inspect.signature(cls.__init__).parameters
             if k != "self"
         }
+        # Fix for TweedieRegressor: ensure 'power' is not None
+        if "power" in params and params["power"] is None:
+            params["power"] = getattr(value, "power", 0.0)
         return {"params": params}
+
+    def serialize_interp1d(self, value: interp1d) -> Dict[str, Any]:
+        """
+        Serialize a scipy.interpolate.interp1d object.
+
+        """
+        fill_value = getattr(value, "fill_value", np.nan)
+        # Convert fill_value to list if it's a numpy array
+        if isinstance(fill_value, np.ndarray):
+            fill_value = self._array_to_list(fill_value)
+        return {
+            "x": self._array_to_list(value.x),
+            "y": self._array_to_list(value.y),
+            "kind": getattr(value, "_kind", "linear"),
+            "fill_value": fill_value,
+            "bounds_error": getattr(value, "bounds_error", None),
+            "assume_sorted": getattr(value, "assume_sorted", False),
+            "axis": getattr(value, "axis", -1),
+            "copy": getattr(value, "copy", True),
+        }
 
     def _convert_to_serializable_types(self, value: Any) -> Any:
         """
@@ -377,6 +403,7 @@ class SklearnSerializer(ModelSerializer):
                 rv_continuous_frozen,
                 lambda v: {"dist_name": v.dist.name, "args": v.args, "kwargs": v.kwds},
             ),
+            (interp1d, self.serialize_interp1d),
             (type, lambda v: {"type_name": v.__name__}),
             (slice, lambda v: {"start": v.start, "stop": v.stop, "step": v.step}),
             (
@@ -388,6 +415,7 @@ class SklearnSerializer(ModelSerializer):
             (Tree, self._serialize_tree),
             (_csr.csr_matrix, self._serialize_csr_matrix),
             (np.generic, lambda v: v.item()),
+            ((np.dtype, type(np.dtype("float64"))), lambda v: str(v)),
         ]
 
         for typ, handler in handlers:
@@ -453,6 +481,18 @@ class SklearnSerializer(ModelSerializer):
             ]
 
         if isinstance(attr_type, str):
+            if attr_type == "interp1d":
+                # Deserialize interp1d objects
+                return interp1d(
+                    x=value["x"],
+                    y=value["y"],
+                    kind=value["kind"],
+                    fill_value=value["fill_value"],
+                    bounds_error=value["bounds_error"],
+                    assume_sorted=value["assume_sorted"],
+                    axis=value["axis"],
+                    copy=value["copy"],
+                )
             if attr_type == "RandomState":
                 # Deserialize RandomState objects
                 return np.random.RandomState(value)
@@ -490,6 +530,8 @@ class SklearnSerializer(ModelSerializer):
                 "int32": np.int32,
                 "float": float,
                 "float64": np.float64,
+                "dtype": np.dtype,
+                "Float64DType": np.dtype,
                 "str": str,
                 "tuple": tuple,
                 "ndarray": lambda x: np.array(
