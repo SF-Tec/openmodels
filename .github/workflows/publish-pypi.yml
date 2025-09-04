@@ -31,10 +31,16 @@ jobs:
             echo "Version mismatch. pyproject.toml has $current_version, but workflow input is ${{ github.event.inputs.version }}"
             exit 1
           fi
-
+          
+      - name: Clean build artifacts
+        run: rm -rf build dist *.egg-info
+        
       - name: Build package
         run: poetry build
-
+        
+      - name: Check dist with twine
+        run: twine check dist/*
+        
       - name: Publish to PyPI
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
