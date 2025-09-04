@@ -8,47 +8,70 @@ converted to and from dictionary representations.
 from typing import Any, Callable, Dict, List, Tuple, Type, Optional
 import numpy as np
 import inspect
+from scipy.interpolate import interp1d  # type: ignore
 from scipy.sparse import _csr, csr_matrix  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: ignore
 import scipy.stats  # type: ignore
 
+import sklearn
+from sklearn._loss.loss import (
+    AbsoluteError,
+    HalfBinomialLoss,
+    HalfGammaLoss,
+    HalfMultinomialLoss,
+    HalfPoissonLoss,
+    HalfSquaredError,
+    HalfTweedieLoss,
+    HalfTweedieLossIdentity,
+    PinballLoss,
+    BaseLoss,
+)
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.discovery import all_estimators
+from sklearn.neighbors import KDTree
 
 from openmodels.exceptions import UnsupportedEstimatorError, SerializationError
 from openmodels.protocols import ModelSerializer
+import warnings
 
 ConverterFunc = Callable[[Any], Any]
+
+LOSS_CLASS_REGISTRY = {
+    "AbsoluteError": AbsoluteError,
+    "HalfBinomialLoss": HalfBinomialLoss,
+    "HalfGammaLoss": HalfGammaLoss,
+    "HalfMultinomialLoss": HalfMultinomialLoss,
+    "HalfPoissonLoss": HalfPoissonLoss,
+    "HalfSquaredError": HalfSquaredError,
+    "HalfTweedieLoss": HalfTweedieLoss,
+    "HalfTweedieLossIdentity": HalfTweedieLossIdentity,
+    "PinballLoss": PinballLoss,
+}
 
 ALL_ESTIMATORS = {
     name: cls for name, cls in all_estimators() if issubclass(cls, BaseEstimator)
 }
 
+TESTED_VERSIONS = ["1.6.1", "1.7.1"]
+
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
-    "GammaRegressor",  # Object of type HalfGammaLoss is not JSON serializable
-    # https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/_loss/loss.py
     "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
-    "GradientBoostingRegressor",  # Object of type RandomState is not JSON serializable
-    "HistGradientBoostingRegressor",  # Object of type HalfSquaredError is not JSON serializable
-    "IsotonicRegression",  # Object of type interp1d is not JSON serializable
-    "PoissonRegressor",  # Object of type HalfPoissonLoss is not JSON serializable
-    "TweedieRegressor",  # Object of type HalfTweedieLossIdentity is not JSON serializable
+    "GradientBoostingRegressor",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
+    "HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
     # Classifiers:
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
-    "GaussianProcessClassifier",  # Object of type OneVsRestClassifier is not JSON serializable
-    "GradientBoostingClassifier",  # Object of type RandomState is not JSON serializable
+    "GaussianProcessClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneVsRestClassifier
+    "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
-    "KNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OneVsRestClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
     "Perceptron",  # Object of type Hinge is not JSON serializable
-    "RadiusNeighborsClassifier",  # Object of type KDTree is not JSON serializable
     "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "RidgeClassifierCV",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
@@ -65,44 +88,41 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "DictVectorizer",  # ValueError:
     "FeatureHasher",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
     "FeatureUnion",  # AttributeError: 'dict' object has no attribute 'transform'
-    "GaussianRandomProjection",  # Object of type RandomState is not JSON serializable
+    "GaussianRandomProjection",  # ValueError: setting an array element with a sequence. The requested array
+    # has an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
     "HashingVectorizer",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
-    "Isomap",  # Object of type KDTree is not JSON serializable
-    "KBinsDiscretizer",  # Object of type Float64DType is not JSON serializable
-    "KNeighborsTransformer",  # Object of type KDTree is not JSON serializable
-    "LatentDirichletAllocation",  # Object of type RandomState is not JSON serializable
+    "KBinsDiscretizer",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
+    "KNeighborsTransformer",  # ValueError:
+    "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
+    # an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
     "LinearDiscriminantAnalysis",  # This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
-    "LocallyLinearEmbedding",  # Object of type NearestNeighbors is not JSON serializable"
     "LabelBinarizer",  # LabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
     "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "OneHotEncoder",  # ValueError:
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    "RadiusNeighborsTransformer",  # Object of type KDTree is not JSON serializable
+    "RadiusNeighborsTransformer",  # ValueError:
     "RandomTreesEmbedding",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
     "SelectFdr",  # Object of type function is not JSON serializable
     "SelectFpr",  # Object of type function is not JSON serializable
     "SelectFwe",  # Object of type function is not JSON serializable
     "SelectKBest",  # Object of type function is not JSON serializable
     "SelectPercentile",  # Object of type function is not JSON serializable
-    "SimpleImputer",  # Object of type Float64DType is not JSON serializable
     "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
     "TfidfTransformer",  # ValueError
     # Others:
-    "BayesianGaussianMixture",  # Object of type ndarray is not JSON serializable
     "CountVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
-    "KernelDensity",  # Object of type KDTree is not JSON serializable
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
-    "NearestNeighbors",  # Object of type KDTree is not JSON serializable
     "SGDOneClassSVM",  # Object of type Hinge is not JSON serializable
     "TfidfVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
 ]
+
 
 # Dictionary of attribute exceptions
 ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
@@ -121,7 +141,12 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "NuSVR": ["_sparse", "_gamma", "_n_support", "_probA", "_probB"],
     "TweedieRegressor": ["_base_loss"],
     "GaussianProcessRegressor": ["kernel_"],
-    "HistGradientBoostingRegressor": ["_loss"],
+    "HistGradientBoostingRegressor": [
+        "_loss",
+        "_preprocessor",
+        "_baseline_prediction",
+        "_predictors",
+    ],
     "RadiusNeighborsRegressor": ["_fit_method", "_fit_X", "_y"],
     "CCA": ["_x_mean", "_predict_1d"],
     "GammaRegressor": ["_base_loss"],
@@ -168,7 +193,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "KBinsDiscretizer": ["_encoder"],
     "KernelPCA": ["_centerer"],
     "KNNImputer": ["_mask_fit_X", "_valid_mask"],
-    "KNeighborsTransformer": ["_fit_method", "_tree"],
+    "KNeighborsTransformer": ["_fit_method", "_tree", "_fit_X"],
     "PowerTransformer": ["_scaler"],
     "RadiusNeighborsTransformer": ["_fit_method", "_tree"],
     "SimpleImputer": ["_fit_dtype"],
@@ -184,7 +209,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_average_path_length_per_tree",
     ],
     "OneClassSVM": ["_sparse", "_n_support", "_probA", "_probB", "_gamma"],
-    "NearestNeighbors": ["_fit_method", "_tree"],
+    "NearestNeighbors": ["_fit_method", "_tree", "_fit_X"],
 }
 
 
@@ -205,6 +230,34 @@ class SklearnSerializer(ModelSerializer):
     SUPPORTED_TYPES : List[Type]
         A list of supported types for serialization.
     """
+
+    def _check_version(self, stored_version: Optional[str]) -> None:
+        """
+        Check compatibility between stored scikit-learn version and the current environment.
+
+        Parameters
+        ----------
+        stored_version : str
+            The scikit-learn version recorded during serialization.
+
+        Notes
+        -----
+        - Issues a warning if the stored version does not match the current version.
+        - Mentions the baseline supported version (1.7.1).
+        - Does nothing if no version is stored (for backward compatibility).
+        """
+        if not stored_version:
+            return  # No version info available
+
+        current_version = sklearn.__version__
+        if stored_version != current_version:
+            warnings.warn(
+                f"Version mismatch detected in sklearn deserialization:\n"
+                f"- Model serialized with scikit-learn {stored_version}\n"
+                f"- Current environment: scikit-learn {current_version}\n\n"
+                f"OpenModels has been tested under {TESTED_VERSIONS}. ",
+                UserWarning,
+            )
 
     @staticmethod
     def all_estimators(
@@ -275,24 +328,6 @@ class SklearnSerializer(ModelSerializer):
         tree.__setstate__(state)
         return tree
 
-    def _serialize_type_object(self, value: Type) -> Dict[str, Any]:
-        """
-        Serializes a Python type object to a dictionary.
-
-        """
-        return {"__type__": True, "type_name": value.__name__}
-
-    def _serialize_slice_object(self, value: slice) -> Dict[str, Any]:
-        """
-        Serializes a slice object to a dictionary.
-        """
-        return {
-            "__slice__": True,
-            "start": value.start,
-            "stop": value.stop,
-            "step": value.step,
-        }
-
     def _serialize_csr_matrix(self, value: _csr.csr_matrix) -> Dict[str, Any]:
         """
         Serializes a sparse CSR matrix to a dictionary.
@@ -306,16 +341,66 @@ class SklearnSerializer(ModelSerializer):
         }
         return serialized_sparse_matrix
 
-    def _serialize_scipy_dist(self, value: rv_continuous_frozen) -> Dict[str, Any]:
+    def _serialize_loss_object(self, value: BaseLoss) -> Dict[str, Any]:
         """
-        Serializes a scipy.stats.rv_continuous_frozen object to a dictionary.
+        Serialize a scikit-learn loss object using its constructor parameters.
+
+        Parameters:
+            obj: The loss object instance.
+
+        Returns:
+            dict: Serialized representation.
         """
-        return {
-            "__scipy_dist__": True,
-            "dist_name": value.dist.name,
-            "args": value.args,
-            "kwargs": value.kwds,
+        cls = type(value)
+        params = {
+            k: getattr(value, k, None)
+            for k in inspect.signature(cls.__init__).parameters
+            if k != "self"
         }
+        # Fix for TweedieRegressor: ensure 'power' is not None
+        if "power" in params and params["power"] is None:
+            params["power"] = getattr(value, "power", 0.0)
+        return {"params": params}
+
+    def _serialize_interp1d(self, value: interp1d) -> Dict[str, Any]:
+        """
+        Serialize a scipy.interpolate.interp1d object.
+
+        """
+        fill_value = getattr(value, "fill_value", np.nan)
+        # Convert fill_value to list if it's a numpy array
+        if isinstance(fill_value, np.ndarray):
+            fill_value = self._array_to_list(fill_value)
+        return {
+            "x": self._array_to_list(value.x),
+            "y": self._array_to_list(value.y),
+            "kind": getattr(value, "_kind", "linear"),
+            "fill_value": fill_value,
+            "bounds_error": getattr(value, "bounds_error", None),
+            "assume_sorted": getattr(value, "assume_sorted", False),
+            "axis": getattr(value, "axis", -1),
+            "copy": getattr(value, "copy", True),
+        }
+
+    def _serialize_kdtree(self, value: KDTree) -> Dict[str, Any]:
+        """
+        Serializes a KDTree object to a dictionary.
+        """
+        # For KDTree, we'll use a simpler approach - just serialize the essential data
+        # and let the tree be reconstructed from the data
+        data = np.array(value.data)
+        return {
+            "data": self._array_to_list(data),
+        }
+
+    def _deserialize_kdtree(self, kdtree_data: Dict[str, Any]) -> KDTree:
+        """
+        Deserializes a dictionary representation of a KDTree back to a KDTree object.
+        """
+        data = np.array(kdtree_data["data"])
+
+        # Create KDTree with data - the tree will be rebuilt automatically
+        return KDTree(data)
 
     def _convert_to_serializable_types(self, value: Any) -> Any:
         """
@@ -324,12 +409,25 @@ class SklearnSerializer(ModelSerializer):
 
         # Dispatch table
         handlers = [
-            (rv_continuous_frozen, self._serialize_scipy_dist),
-            (type, self._serialize_type_object),
-            (slice, self._serialize_slice_object),
+            (KDTree, self._serialize_kdtree),
+            (BaseLoss, self._serialize_loss_object),
+            (
+                rv_continuous_frozen,
+                lambda v: {"dist_name": v.dist.name, "args": v.args, "kwargs": v.kwds},
+            ),
+            (interp1d, self._serialize_interp1d),
+            (type, lambda v: {"type_name": v.__name__}),
+            (slice, lambda v: {"start": v.start, "stop": v.stop, "step": v.step}),
+            (
+                np.random.RandomState,
+                lambda v: [
+                    self._convert_to_serializable_types(x) for x in v.get_state()
+                ],
+            ),
             (Tree, self._serialize_tree),
             (_csr.csr_matrix, self._serialize_csr_matrix),
             (np.generic, lambda v: v.item()),
+            ((np.dtype, type(np.dtype("float64"))), lambda v: str(v)),
         ]
 
         for typ, handler in handlers:
@@ -361,33 +459,8 @@ class SklearnSerializer(ModelSerializer):
                 str(k): self._convert_to_serializable_types(v) for k, v in value.items()
             }
         if isinstance(value, (list, tuple)):
-            # If the list contains tuples of (name, estimator, columns), serialize the estimator
-            if value and all(
-                isinstance(item, tuple)
-                and len(item) == 3
-                and isinstance(item[1], BaseEstimator)
-                for item in value
-            ):
-                return [
-                    (item[0], self._convert_to_serializable_types(item[1]), item[2])
-                    for item in value
-                ]
-            # If the list contains tuples of (name, estimator), serialize each estimator
-            if value and all(
-                isinstance(item, tuple)
-                and len(item) == 2
-                and isinstance(item[1], BaseEstimator)
-                for item in value
-            ):
-                return [
-                    (item[0], self._convert_to_serializable_types(item[1]))
-                    for item in value
-                ]
-            # If the list contains BaseEstimator objects, serialize each one
-            if value and all(isinstance(item, BaseEstimator) for item in value):
-                return [self._convert_to_serializable_types(item) for item in value]
-            # Otherwise use the default array to list conversion
-            return self._array_to_list(value)
+            # Recursively convert each element to a serializable type
+            return [self._convert_to_serializable_types(item) for item in value]
 
         if isinstance(value, (np.ndarray)):
             # Special handling for arrays of estimators
@@ -411,31 +484,6 @@ class SklearnSerializer(ModelSerializer):
         Convert a JSON-deserialized value to its scikit-learn type.
 
         """
-        if isinstance(value, dict) and value.get("__scipy_dist__"):
-            dist = getattr(scipy.stats, value["dist_name"])
-            return dist(*value["args"], **value["kwargs"])
-
-        if isinstance(value, dict) and "estimator_class" in value:
-            # Recursively deserialize fitted estimators
-            return self.deserialize(value)
-
-        if isinstance(value, dict) and value.get("__type__"):
-            # Deserialize Python type objects from their string name
-            return getattr(
-                __builtins__, value["type_name"], float
-            )  # Default to float if not found
-
-        if isinstance(value, dict) and value.get("__slice__"):
-            # Deserialize slice objects
-            return slice(value["start"], value["stop"], value["step"])
-
-        if isinstance(value, dict) and "__template__" in value:
-            estimator_class = ALL_ESTIMATORS[value["__template__"]]
-            params = value.get("params", {})
-            # Recursively convert all params
-            for k in params:
-                params[k] = self._convert_to_sklearn_types(params[k], None, None)
-            return estimator_class(**params)
 
         # Recursive case: if attr_type is a list, process each element in value
         if isinstance(attr_type, list) and isinstance(value, list):
@@ -445,6 +493,39 @@ class SklearnSerializer(ModelSerializer):
             ]
 
         if isinstance(attr_type, str):
+            if attr_type == "interp1d":
+                # Deserialize interp1d objects
+                return interp1d(
+                    x=value["x"],
+                    y=value["y"],
+                    kind=value["kind"],
+                    fill_value=value["fill_value"],
+                    bounds_error=value["bounds_error"],
+                    assume_sorted=value["assume_sorted"],
+                    axis=value["axis"],
+                    copy=value["copy"],
+                )
+            if attr_type == "RandomState":
+                # Deserialize RandomState objects
+                return np.random.RandomState(value)
+            if attr_type == "type":
+                # Deserialize Python type objects from their string name
+                return getattr(
+                    __builtins__, value["type_name"], float
+                )  # Default to float if not found
+
+            if attr_type in LOSS_CLASS_REGISTRY:
+                loss_cls = LOSS_CLASS_REGISTRY[attr_type]
+                params = value.get("params", {})
+                return loss_cls(**params)
+
+            if attr_type == "slice":
+                return slice(value["start"], value["stop"], value["step"])
+
+            if attr_type == "scipy_dist":
+                dist = getattr(scipy.stats, value["dist_name"])
+                return dist(*value["args"], **value["kwargs"])
+
             if attr_type == "csr_matrix":
                 # Ensure all sparse matrix components are of correct dtype
                 return csr_matrix(
@@ -461,6 +542,8 @@ class SklearnSerializer(ModelSerializer):
                 "int32": np.int32,
                 "float": float,
                 "float64": np.float64,
+                "dtype": np.dtype,
+                "Float64DType": np.dtype,
                 "str": str,
                 "tuple": tuple,
                 "ndarray": lambda x: np.array(
@@ -470,13 +553,13 @@ class SklearnSerializer(ModelSerializer):
 
             if attr_type in converters:
                 return converters[attr_type](value)
+
             if attr_type in ALL_ESTIMATORS:
                 # This is an estimator type
-                if isinstance(value, dict):
-                    if "__template__" in value:
-                        estimator_class = ALL_ESTIMATORS[value["__template__"]]
-                        return estimator_class(**value["params"])
-                    return self.deserialize(value)
+                if "__template__" in value:
+                    estimator_class = ALL_ESTIMATORS[value["__template__"]]
+                    return estimator_class(**value["params"])
+                return self.deserialize(value)
 
             return value  # Return as-is if no specific conversion is needed
 
@@ -498,16 +581,14 @@ class SklearnSerializer(ModelSerializer):
         """
         if isinstance(array, np.ndarray):
             return self._array_to_list(array.tolist())
-        elif isinstance(array, list):
+        elif isinstance(array, (list, tuple)):
             return [self._array_to_list(item) for item in array]
-        elif isinstance(array, tuple):
-            return tuple(self._array_to_list(item) for item in array)
         elif isinstance(array, np.generic):
             return array.item()
         else:
             return array
 
-    def get_nested_types(self, item: Any) -> Any:
+    def _get_nested_types(self, item: Any) -> Any:
         """
         Recursively determine the type of elements within nested lists.
 
@@ -528,7 +609,7 @@ class SklearnSerializer(ModelSerializer):
 
         """
         if isinstance(item, List) and item:  # If it's a list and not empty
-            return [self.get_nested_types(subitem) for subitem in item]
+            return [self._get_nested_types(subitem) for subitem in item]
         elif isinstance(item, BaseEstimator):
             # For estimators, return their class name instead of just 'BaseEstimator'
             return item.__class__.__name__
@@ -536,7 +617,7 @@ class SklearnSerializer(ModelSerializer):
             # Return the type name if it's not a list or it's an empty list
             return type(item).__name__
 
-    def get_dtype(self, value: Any) -> str:
+    def _get_dtype(self, value: Any) -> str:
         """
         Get the dtype of a numpy array, otherwise return empty string.
         """
@@ -616,10 +697,10 @@ class SklearnSerializer(ModelSerializer):
 
         # Generate attribute types with nested structure.
         # These types are used to convert the serialized attributes back to their original types.
-        attribute_types = [self.get_nested_types(value) for value in attribute_values]
+        attribute_types = [self._get_nested_types(value) for value in attribute_values]
 
         attribute_dtypes_map = {
-            key: self.get_dtype(value)
+            key: self._get_dtype(value)
             for key, value in zip(filtered_attribute_keys, attribute_values)
             if isinstance(value, np.ndarray)  # Only include NumPy arrays
         }
@@ -630,15 +711,19 @@ class SklearnSerializer(ModelSerializer):
             self._convert_to_serializable_types(value) for value in attribute_values
         ]
 
+        attributes_map = dict(
+            zip(filtered_attribute_keys, serializable_attribute_values)
+        )
+
         # Serialize model parameters
         params = model.get_params()
         serializable_params = self._convert_to_serializable_types(params)
         param_types = {
-            param_name: self.get_nested_types(param_value)
+            param_name: self._get_nested_types(param_value)
             for param_name, param_value in params.items()
         }
         param_dtypes = {
-            param_name: self.get_dtype(param_value)
+            param_name: self._get_dtype(param_value)
             for param_name, param_value in params.items()
             if isinstance(param_value, np.ndarray)
             or (isinstance(param_value, (list, tuple)) and param_value)
@@ -646,11 +731,8 @@ class SklearnSerializer(ModelSerializer):
 
         # We losely follow the ONNX standard for the serialized model.
         # https://github.com/onnx/onnx/blob/main/docs/IR.md
-
         return {
-            "attributes": dict(
-                zip(filtered_attribute_keys, serializable_attribute_values)
-            ),
+            "attributes": attributes_map,
             "attribute_types": attribute_types_map,
             "attribute_dtypes": attribute_dtypes_map,
             "estimator_class": model.__class__.__name__,
@@ -691,6 +773,9 @@ class SklearnSerializer(ModelSerializer):
         >>> deserialized_model = serializer.deserialize(serialized_dict)
         >>> predictions = deserialized_model.predict(X_test)
         """
+        # Version control check
+        self._check_version(data.get("producer_version"))
+
         estimator_class = data["estimator_class"]
         if estimator_class in NOT_SUPPORTED_ESTIMATORS:
             raise UnsupportedEstimatorError(
@@ -718,7 +803,14 @@ class SklearnSerializer(ModelSerializer):
             # Special handling for Pipeline steps
             if estimator_class == "Pipeline" and param_name == "steps":
                 reconstructed_params[param_name] = [
-                    (name, self._convert_to_sklearn_types(est, None, None))
+                    (
+                        name,
+                        (
+                            self.deserialize(est)
+                            if isinstance(est, dict) and "estimator_class" in est
+                            else est
+                        ),
+                    )
                     for name, est in param_value
                 ]
             else:
@@ -733,6 +825,12 @@ class SklearnSerializer(ModelSerializer):
             # Handle tree_ separately
             if attr_type == "Tree":
                 model.tree_ = self._deserialize_tree(value)
+                continue
+            # Skip _tree attribute for KDTree - let the transformer recreate it
+            if attr_type == "KDTree":
+                model._tree = self._deserialize_kdtree(value)
+                continue
+            if estimator_class == "Pipeline" and attribute == "steps":
                 continue
             # Use _convert_to_sklearn_types for all attributes
             setattr(
