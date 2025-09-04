@@ -6,11 +6,15 @@ from sklearn.datasets import make_classification
 from sklearn.feature_extraction import FeatureHasher
 from openmodels.test_helpers import run_test_model
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
+from test.test_regression import REGRESSORS
+from test.test_classification import CLASSIFIERS
 
-# Get all transformer estimators, filtering out not supported ones
+# Get all transformer estimators, filtering out not supported ones and those that are also regressors/classifiers
 TRANSFORMERS = [
     cls for name, cls in all_estimators(type_filter="transformer")
     if name not in NOT_SUPPORTED_ESTIMATORS
+    and name not in [reg.__name__ for reg in REGRESSORS]
+    and name not in [clf.__name__ for clf in CLASSIFIERS]
 ]
 
 @pytest.fixture(scope="module")
@@ -46,8 +50,6 @@ def test_transformer(Transformer, data):
     if Transformer.__name__ in ["AdditiveChi2Sampler", "MiniBatchNMF", "LatentDirichletAllocation", "NMF"]:
         x = np.abs(x)
     
-    if Transformer.__name__ not in ["CCA", "GenericUnivariateSelect", "PLSCanonical", "PLSRegression", "PLSSVD", "SelectFdr", "SelectFpr", "SelectFwe", "SelectKBest", "SelectPercentile"]:
-        y = None
     if Transformer.__name__ in ["CCA", "PLSCanonical"]:
         args["n_components"] = 1
     if Transformer.__name__ in ["FeatureHasher"]:
@@ -68,6 +70,48 @@ def test_transformer(Transformer, data):
         x = pairwise_kernels(X, metric="linear")
     if Transformer.__name__ in ["PLSSVD"]:
         args["n_components"] = 1
+    if Transformer.__name__ == "ColumnTransformer":
+        from sklearn.preprocessing import StandardScaler, OneHotEncoder
+        # Example input: 2 numeric columns, 1 categorical column
+        x = np.array([
+            [0.5, 1.0, 'A'],
+            [1.5, 2.0, 'B'],
+            [3.0, 3.5, 'A'],
+            [2.5, 2.0, 'C']
+        ], dtype=object)
+        y = None
+        x_sparse = None
+        args["transformers"] = [
+            ("num", StandardScaler(), [0, 1]),
+            ("cat", OneHotEncoder(), [2])
+    ]
+    if Transformer.__name__ == "FeatureUnion":
+        from sklearn.preprocessing import StandardScaler, MinMaxScaler
+        # Example input: numeric data
+        x = np.array([
+            [0.5, 1.0],
+            [1.5, 2.0],
+            [3.0, 3.5],
+            [2.5, 2.0]
+        ])
+        y = None
+        x_sparse = None
+        args["transformer_list"] = [
+            ("scaler1", StandardScaler()),
+            ("scaler2", MinMaxScaler())
+        ]
+    if Transformer.__name__ in ["SelectFromModel", "SequentialFeatureSelector", "RFE", "RFECV"]:
+        from sklearn.linear_model import LogisticRegression
+        args["estimator"] = LogisticRegression()
+    if Transformer.__name__ == "SparseCoder":
+        # SparseCoder requires a dictionary (components) for initialization
+        # Let's create a random dictionary with shape (n_components, n_features)
+        n_components = 5
+        n_features = x.shape[1] if x is not None else 5
+        rng = np.random.RandomState(42)
+        dictionary = rng.rand(n_components, n_features)
+        args["dictionary"] = dictionary
+
 
     transformer = Transformer(**args)
 

@@ -4,6 +4,8 @@ import numpy as np
 from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_regression
 from sklearn.feature_extraction import FeatureHasher
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 from openmodels.test_helpers import run_test_model
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
 
@@ -14,7 +16,7 @@ REGRESSORS = [cls for name, cls in all_estimators(type_filter="regressor")
 @pytest.fixture(scope="module")
 def data():
     x, y = make_regression(  # type: ignore
-        n_samples=50,
+        n_samples=100,
         n_features=3,
         n_informative=3,
         random_state=42,
@@ -60,7 +62,62 @@ def test_regressor(Regressor, data):
         x, y = make_regression(n_samples=50, n_features=3, n_targets=2, random_state=42)
         x_sparse = None
         y_sparse = None
-    
+    elif Regressor.__name__ in ["MultiOutputRegressor"]:
+        x, y = make_regression(n_samples=50, n_features=3, n_targets=2, random_state=42)
+        x_sparse = None
+        y_sparse = None
+        base_estimator = LinearRegression()
+        args = {"estimator": base_estimator}
+    elif Regressor.__name__ in ["RegressorChain"]:
+        x, y = make_regression(n_samples=50, n_features=3, n_targets=2, random_state=42)
+        x_sparse = None
+        y_sparse = None
+        base_estimator = LinearRegression()
+        args = {"base_estimator": base_estimator}
+
+    elif Regressor.__name__ == "StackingRegressor":
+        # Create simpler base estimators that are easier to serialize
+        estimators = [
+            ('lr1', LinearRegression()),
+            ('lr2', LinearRegression())
+        ]
+        # Use a simple final estimator
+        final_estimator = LinearRegression()
+        
+        # Create multi-output data since StackingRegressor works better with it
+        x, y = make_regression(
+            n_samples=50, 
+            n_features=3, 
+            n_targets=1, 
+            random_state=42
+        )
+        x_sparse = None
+        y_sparse = None
+        
+        args = {
+            "estimators": estimators,
+            "final_estimator": final_estimator,
+            "cv": 3  # Add cross-validation folds
+        }
+    elif Regressor.__name__ == "VotingRegressor":
+        # VotingRegressor expects a list of (name, estimator) tuples
+        estimators = [
+            ('lr', LinearRegression()),
+            ('rf', RandomForestRegressor(n_estimators=10, random_state=42))
+        ]
+        x, y = make_regression(
+            n_samples=50,
+            n_features=3,
+            n_targets=1,
+            random_state=42
+        )
+        x_sparse = None
+        y_sparse = None
+
+        args = {
+            "estimators": estimators
+        }
+
     regressor = Regressor(**args)
 
     try:
