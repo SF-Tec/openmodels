@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/openmodels.svg)](https://badge.fury.io/py/openmodels)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Versions](https://img.shields.io/pypi/pyversions/openmodels.svg)](https://pypi.org/project/openmodels/)
+[![TestPyPI version](https://img.shields.io/pypi/v/openmodels?label=TestPyPI&color=blue&server=https://test.pypi.org/pypi)](https://test.pypi.org/project/openmodels/)
 
 OpenModels is a flexible and extensible library for serializing and deserializing machine learning models. It's designed to support any serialization format through a plugin-based architecture, providing a safe and transparent solution for exporting and sharing predictive models.
 
