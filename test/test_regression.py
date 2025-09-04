@@ -1,7 +1,6 @@
 import pytest
 import random
 import numpy as np
-
 from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_regression
 from sklearn.feature_extraction import FeatureHasher
