@@ -1,15 +1,23 @@
-# base.py
+"""
+Mixins for extensible serialization of Python, NumPy, and SciPy objects.
+
+This module provides a flexible mixin-based architecture for converting complex objects
+(such as slices, types, NumPy arrays, and SciPy structures) into JSON-serializable formats.
+Each mixin implements handlers for specific types, allowing easy extension and modular
+support for new serialization targets.
+"""
+
 import numpy as np
-from scipy.sparse import csr_matrix
-from scipy.interpolate import interp1d
-from scipy.stats._distn_infrastructure import rv_continuous_frozen
+from scipy.sparse import csr_matrix  # type: ignore
+from scipy.interpolate import interp1d  # type: ignore
+from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: ignore
 
 from typing import Any
 
 
 class SerializerMixin:
     """
-    Base mixin providing recursive serialization and, native python objects 
+    Base mixin providing recursive serialization and, native python objects
     serialization a dispatch mechanism. Other mixins only need to implement
     `_get_handlers()` and serialization helpers.
     """
@@ -29,7 +37,7 @@ class SerializerMixin:
             return [self.convert_to_serializable(v) for v in value]
 
         return value
-    
+
     def _serialize_slice(self, value: slice):
         return {"start": value.start, "stop": value.stop, "step": value.step}
 
@@ -59,7 +67,7 @@ class NumpySerializerMixin(SerializerMixin):
             elif isinstance(first_elem, (float, np.floating)):
                 return "float64"  # Use float64 for float lists
         return ""
-      
+
     def _serialize_ndarray(self, value: np.ndarray):
         return self.convert_to_serializable(value.tolist())
 

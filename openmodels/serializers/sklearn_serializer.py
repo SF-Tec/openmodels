@@ -9,8 +9,7 @@ from typing import Any, Callable, Dict, List, Tuple, Type, Optional
 import numpy as np
 import inspect
 from scipy.interpolate import interp1d  # type: ignore
-from scipy.sparse import _csr, csr_matrix  # type: ignore
-from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: ignore
+from scipy.sparse import csr_matrix  # type: ignore
 import scipy.stats  # type: ignore
 
 import sklearn
@@ -222,7 +221,7 @@ class SklearnSerializer(
     ModelSerializer,
     NumpySerializerMixin,
     ScipySerializerMixin,
-    ):
+):
     """
     Serializer for scikit-learn estimators.
 
@@ -296,7 +295,7 @@ class SklearnSerializer(
             (BaseLoss, self._serialize_loss),
             (np.ndarray, self._serialize_estimators_ndarray),
         ] + super()._get_handlers()
-    
+
     def _serialize_tree(self, tree: Tree) -> Dict[str, Any]:
         """
         Serializes a sklearn.tree._tree.Tree object to a dictionary.
@@ -395,8 +394,7 @@ class SklearnSerializer(
             if isinstance(first_elem, BaseEstimator):
                 # This is an array of estimators, serialize each one
                 return [
-                    [self.convert_to_serializable(est) for est in row]
-                    for row in value
+                    [self.convert_to_serializable(est) for est in row] for row in value
                 ]
         # Regular array handling
         return self._serialize_ndarray(value)
@@ -539,13 +537,16 @@ class SklearnSerializer(
         """
         Extract fitted sklearn attributes,
         """
+
         def is_valid_attribute(key: str) -> bool:
             return (
-                not key.startswith("__")                      # not private/internal
-                and key.endswith("_")                         # sklearn convention
-                and not key.endswith("__")                    # not dunder
-                and not isinstance(getattr(type(estimator), key, None), property)  # not property
-                and not callable(getattr(estimator, key))         # not method
+                not key.startswith("__")  # not private/internal
+                and key.endswith("_")  # sklearn convention
+                and not key.endswith("__")  # not dunder
+                and not isinstance(
+                    getattr(type(estimator), key, None), property
+                )  # not property
+                and not callable(getattr(estimator, key))  # not method
             )
 
         # Collect attributes
@@ -587,8 +588,8 @@ class SklearnSerializer(
         >>> serializer = SklearnSerializer()
         >>> serialized_dict = serializer.serialize(model)
         """
-        # Extract and build estimator params and its types/dtypes map    
-        params = model.get_params()    
+        # Extract and build estimator params and its types/dtypes map
+        params = model.get_params()
         param_types, param_dtypes = self._get_type_maps(params)
 
         # Build serializable estimator including extra info
@@ -599,7 +600,7 @@ class SklearnSerializer(
             "param_dtypes": param_dtypes,
             "producer_version": getattr(model, "_sklearn_version", None),
             "producer_name": model.__module__.split(".")[0],
-            "domain": "sklearn"
+            "domain": "sklearn",
         }
 
         try:
@@ -616,9 +617,8 @@ class SklearnSerializer(
             **serialized_estimator,
             "attributes": serializable_attributes,
             "attribute_types": attribute_types,
-            "attribute_dtypes": attribute_dtypes
+            "attribute_dtypes": attribute_dtypes,
         }
-
 
     def deserialize(self, data: Dict[str, Any]) -> BaseEstimator:
         """

@@ -40,6 +40,11 @@ Follow OpenModels coding style:
 - Avoid magic numbers or hard-coded strings
 - Format code using [Black](https://black.readthedocs.io/en/stable/)
 
+Before submitting your changes, please ensure your code passes formatting, linting, and type checks by running:
+run black openmodels
+run flake8 openmodels
+run mypy openmodels
+
 ## Codecov
 
 Ensure your changes don't reduce OpenModels's test coverage. We use Codecov to track coverage.
