@@ -111,3 +111,34 @@ jobs:
         run: |
           poetry config repositories.testpypi https://test.pypi.org/legacy/
           poetry publish --repository testpypi --username __token__ --password $TEST_PYPI_API_TOKEN
+
+  update-badge:
+    needs: publish-test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get TestPyPI version
+        run: |
+          VERSION=$(curl -s https://test.pypi.org/pypi/openmodels/json | jq -r .info.version)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Write Shields JSON
+        run: |
+          cat > testpypi-badge.json <<EOF
+          {
+            "schemaVersion": 1,
+            "label": "TestPyPI",
+            "message": "${VERSION}",
+            "color": "orange"
+          }
+          EOF
+
+      - name: Commit badge JSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add testpypi-badge.json
+          git commit -m "Update TestPyPI badge to ${VERSION}" || echo "No changes"
+          git push
