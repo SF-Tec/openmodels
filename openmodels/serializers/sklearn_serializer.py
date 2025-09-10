@@ -341,7 +341,7 @@ class SklearnSerializer(ModelSerializer):
         }
         return serialized_sparse_matrix
 
-    def _serialize_loss_object(self, value: BaseLoss) -> Dict[str, Any]:
+    def _serialize_loss(self, value: BaseLoss) -> Dict[str, Any]:
         """
         Serialize a scikit-learn loss object using its constructor parameters.
 
@@ -402,78 +402,66 @@ class SklearnSerializer(ModelSerializer):
         # Create KDTree with data - the tree will be rebuilt automatically
         return KDTree(data)
 
+    def _serialize_ndarray(self, value: np.ndarray) -> List[Any]:
+        # Special handling for arrays of estimators
+        if value.dtype == np.dtype("O") and value.size > 0:
+            first_elem = value.ravel()[0]
+            if isinstance(first_elem, BaseEstimator):
+                # This is an array of estimators, serialize each one
+                return [
+                    [self._convert_to_serializable_types(est) for est in row]
+                    for row in value
+                ]
+        # Regular array handling
+        return self._array_to_list(value)
+
     def _convert_to_serializable_types(self, value: Any) -> Any:
         """
-        Converts a value to a serializable type.
+        Recursively convert values into JSON-serializable types,
+        including special handling for sklearn objects, numpy arrays,
+        and custom structures.
         """
+
+        # Special handling for containers
+        if isinstance(value, dict):
+            return {str(k): self._convert_to_serializable_types(v) for k, v in value.items()}
+
+        if isinstance(value, (list, tuple)):
+            return [self._convert_to_serializable_types(v) for v in value]
 
         # Dispatch table
         handlers = [
+             # Sklearn objects
+            (BaseEstimator, self.serialize),
+            (BaseLoss, self._serialize_loss),
             (KDTree, self._serialize_kdtree),
-            (BaseLoss, self._serialize_loss_object),
+            (Tree, self._serialize_tree),
+
+             # SciPy objects
+            (_csr.csr_matrix, self._serialize_csr_matrix),
             (
                 rv_continuous_frozen,
                 lambda v: {"dist_name": v.dist.name, "args": v.args, "kwargs": v.kwds},
             ),
             (interp1d, self._serialize_interp1d),
-            (type, lambda v: {"type_name": v.__name__}),
-            (slice, lambda v: {"start": v.start, "stop": v.stop, "step": v.step}),
+            
+            # NumPy objects
+            (np.generic, lambda v: v.item()),
             (
                 np.random.RandomState,
-                lambda v: [
-                    self._convert_to_serializable_types(x) for x in v.get_state()
-                ],
+                lambda v: [self._convert_to_serializable_types(x) for x in v.get_state()],
             ),
-            (Tree, self._serialize_tree),
-            (_csr.csr_matrix, self._serialize_csr_matrix),
-            (np.generic, lambda v: v.item()),
             ((np.dtype, type(np.dtype("float64"))), lambda v: str(v)),
+            (np.ndarray, self._serialize_ndarray),
+           
+            # Python-native objects
+            (type, lambda v: {"type_name": v.__name__}),
+            (slice, lambda v: {"start": v.start, "stop": v.stop, "step": v.step}),
         ]
 
         for typ, handler in handlers:
             if isinstance(value, typ):
                 return handler(value)
-
-        if isinstance(value, BaseEstimator):
-            # If the value is a BaseEstimator, serialize it using SklearnSerializer
-            # This allows for nested estimators to be serialized correctly
-            # Check if this is the unfitted estimator template
-            try:
-                check_is_fitted(value)
-                return self.serialize(value)
-            except NotFittedError:
-                return {
-                    "__template__": value.__class__.__name__,
-                    "params": self._convert_to_serializable_types(value.get_params()),
-                }
-
-        if isinstance(value, dict):
-            # Scikit-learn estimators (e.g., LogisticRegressionCV) may use non-string types
-            # (such as np.int64 or float) as dictionary keys for attributes like `coefs_paths_`.
-            # However, JSON serialization requires all dictionary keys to be strings.
-            # The following logic ensures all dictionary keys are converted to strings
-            # to guarantee compatibility with JSON serialization and deserialization.
-            # NOTE: This ensures that LogisticRegressionCV works, but to put back the original
-            # types we need to convert the keys back to the original types (done on fit).
-            return {
-                str(k): self._convert_to_serializable_types(v) for k, v in value.items()
-            }
-        if isinstance(value, (list, tuple)):
-            # Recursively convert each element to a serializable type
-            return [self._convert_to_serializable_types(item) for item in value]
-
-        if isinstance(value, (np.ndarray)):
-            # Special handling for arrays of estimators
-            if value.dtype == np.dtype("O") and value.size > 0:
-                first_elem = value.ravel()[0]
-                if isinstance(first_elem, BaseEstimator):
-                    # This is an array of estimators, serialize each one
-                    return [
-                        [self._convert_to_serializable_types(est) for est in row]
-                        for row in value
-                    ]
-            # Regular array handling
-            return self._array_to_list(value)
 
         return value
 
@@ -556,8 +544,8 @@ class SklearnSerializer(ModelSerializer):
 
             if attr_type in ALL_ESTIMATORS:
                 # This is an estimator type
-                if "__template__" in value:
-                    estimator_class = ALL_ESTIMATORS[value["__template__"]]
+                if "attributes" not in value:
+                    estimator_class = ALL_ESTIMATORS[value["estimator_class"]]
                     return estimator_class(**value["params"])
                 return self.deserialize(value)
 
