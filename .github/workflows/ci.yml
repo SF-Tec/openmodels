@@ -121,9 +121,12 @@ jobs:
 
       - name: Get TestPyPI version
         run: |
-          VERSION=$(curl -s https://test.pypi.org/pypi/openmodels/json | jq -r .info.version)
+          VERSION=$(curl -s https://test.pypi.org/pypi/openmodels/json | jq -r .info.version) || exit 1
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Error: Could not fetch version from TestPyPI." >&2
+            exit 1
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-
       - name: Write Shields JSON
         run: |
           cat > testpypi-badge.json <<EOF
