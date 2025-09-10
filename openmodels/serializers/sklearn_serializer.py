@@ -632,6 +632,44 @@ class SklearnSerializer(ModelSerializer):
                 return "float64"  # Use float64 for float lists
         return ""
 
+    def _get_type_maps(self, values_dict: dict) -> tuple[dict, dict]:
+        """
+        Given a dict of raw values (e.g. model attributes or params),
+        builds the corresponding types/dtypes maps.
+        """
+        types_map = {
+            key: self._get_nested_types(value) for key, value in values_dict.items()
+        }
+        dtypes_map = {
+            key: self._get_dtype(value)
+            for key, value in values_dict.items()
+            if isinstance(value, np.ndarray)
+            or (isinstance(value, (list, tuple)) and value)  # non-empty list/tuple
+        }
+
+        return types_map, dtypes_map
+
+    def _extract_estimator_attributes(self, estimator: BaseEstimator) -> Dict[str, Any]:
+        """
+        Extract fitted sklearn attributes,
+        """
+        def is_valid_attribute(key: str) -> bool:
+            return (
+                not key.startswith("__")                      # not private/internal
+                and key.endswith("_")                         # sklearn convention
+                and not key.endswith("__")                    # not dunder
+                and not isinstance(getattr(type(estimator), key, None), property)  # not property
+                and not callable(getattr(estimator, key))         # not method
+            )
+
+        # Collect attributes
+        attribute_keys = [key for key in dir(estimator) if is_valid_attribute(key)]
+        attribute_keys += ATTRIBUTE_EXCEPTIONS.get(estimator.__class__.__name__, [])
+
+        attributes = {key: getattr(estimator, key) for key in attribute_keys}
+
+        return attributes
+
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
         Serialize a scikit-learn estimator to a dictionary.
@@ -663,87 +701,38 @@ class SklearnSerializer(ModelSerializer):
         >>> serializer = SklearnSerializer()
         >>> serialized_dict = serializer.serialize(model)
         """
-        try:
-            check_is_fitted(model)
-        except NotFittedError as e:
-            raise SerializationError("Cannot serialize an unfitted model") from e
+        # Extract and build estimator params and its types/dtypes map    
+        params = model.get_params()    
+        param_types, param_dtypes = self._get_type_maps(params)
 
-        # Get all attributes that are not private, not properties, and not callable
-        # Attributes that have been estimated from the data must always have a name ending with
-        # trailing underscore,
-        # for example the coefficients of some regression estimator would be stored in a
-        # coef_ attribute after fit has been called.
-        # https://scikit-learn.org/stable/glossary.html#term-attributes
-        # https://scikit-learn.org/stable/developers/develop.html#estimated-attributes
-        # NOTE: This is not always true for all estimators, but it is a good starting point.
-        filtered_attribute_keys = [
-            key
-            for key in dir(model)
-            if not key.startswith("__")  # not private
-            and key.endswith("_")
-            and not key.endswith("__")
-            and not isinstance(getattr(type(model), key, None), property)
-            and not callable(getattr(model, key))
-        ]
-
-        # There are some attributes that are removed in the previous filter according to the
-        # sklearn documentation.
-        # However, they are still needed in the serialized model so we add them to the list.
-        filtered_attribute_keys = filtered_attribute_keys + ATTRIBUTE_EXCEPTIONS.get(
-            model.__class__.__name__, []
-        )
-
-        attribute_values = [getattr(model, key) for key in filtered_attribute_keys]
-
-        # Generate attribute types with nested structure.
-        # These types are used to convert the serialized attributes back to their original types.
-        attribute_types = [self._get_nested_types(value) for value in attribute_values]
-
-        attribute_dtypes_map = {
-            key: self._get_dtype(value)
-            for key, value in zip(filtered_attribute_keys, attribute_values)
-            if isinstance(value, np.ndarray)  # Only include NumPy arrays
-        }
-
-        attribute_types_map = dict(zip(filtered_attribute_keys, attribute_types))
-
-        serializable_attribute_values = [
-            self._convert_to_serializable_types(value) for value in attribute_values
-        ]
-
-        attributes_map = dict(
-            zip(filtered_attribute_keys, serializable_attribute_values)
-        )
-
-        # Serialize model parameters
-        params = model.get_params()
-        serializable_params = self._convert_to_serializable_types(params)
-        param_types = {
-            param_name: self._get_nested_types(param_value)
-            for param_name, param_value in params.items()
-        }
-        param_dtypes = {
-            param_name: self._get_dtype(param_value)
-            for param_name, param_value in params.items()
-            if isinstance(param_value, np.ndarray)
-            or (isinstance(param_value, (list, tuple)) and param_value)
-        }
-
-        # We losely follow the ONNX standard for the serialized model.
-        # https://github.com/onnx/onnx/blob/main/docs/IR.md
-        return {
-            "attributes": attributes_map,
-            "attribute_types": attribute_types_map,
-            "attribute_dtypes": attribute_dtypes_map,
+        # Build serializable estimator including extra info
+        serialized_estimator = {
             "estimator_class": model.__class__.__name__,
-            "params": serializable_params,
+            "params": self._convert_to_serializable_types(params),
             "param_types": param_types,
             "param_dtypes": param_dtypes,
-            "producer_name": model.__module__.split(".")[0],
             "producer_version": getattr(model, "_sklearn_version", None),
-            "model_version": getattr(model, "_sklearn_version", None),
-            "domain": "sklearn",
+            "producer_name": model.__module__.split(".")[0],
+            "domain": "sklearn"
         }
+
+        try:
+            check_is_fitted(model)
+        except NotFittedError:
+            return serialized_estimator
+
+        # Extract and build fitted attributes and its types/dtypes map
+        attributes = self._extract_estimator_attributes(model)
+        attribute_types, attribute_dtypes = self._get_type_maps(attributes)
+        serializable_attributes = self._convert_to_serializable_types(attributes)
+
+        return {
+            **serialized_estimator,
+            "attributes": serializable_attributes,
+            "attribute_types": attribute_types,
+            "attribute_dtypes": attribute_dtypes
+        }
+
 
     def deserialize(self, data: Dict[str, Any]) -> BaseEstimator:
         """
