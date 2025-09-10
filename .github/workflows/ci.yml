@@ -3,8 +3,6 @@ name: OpenModels CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'testpypi-badge.json'
   pull_request:
     branches: [main]
 
