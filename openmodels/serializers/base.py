@@ -11,8 +11,9 @@ import numpy as np
 from scipy.sparse import csr_matrix  # type: ignore
 from scipy.interpolate import interp1d  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: ignore
+import scipy.stats  # type: ignore
 
-from typing import Any
+from typing import Any, Optional
 
 
 class SerializerMixin:
@@ -25,7 +26,7 @@ class SerializerMixin:
     def convert_to_serializable(self, value):
         """Recursively convert values into JSON-serializable types."""
         # First check custom handlers
-        for typ, handler in self._get_handlers():
+        for typ, handler in self._get_serializer_handlers():
             if isinstance(value, typ):
                 return handler(value)
 
@@ -38,17 +39,63 @@ class SerializerMixin:
 
         return value
 
+    def convert_from_serializable(
+            self,
+            value: Any,
+            value_type: Any = "none",
+            value_dtype: Optional[str] = None
+        ) -> Any:
+
+        if isinstance(value_type, list) and isinstance(value, list):
+            return [
+                self.convert_from_serializable(v, t, value_dtype)
+                for v, t in zip(value, value_type)
+            ]
+
+        if isinstance(value_type, str):
+            for typ_name, handler in self._get_deserializer_handlers():
+                if typ_name == value_type:
+                    if value_type in ("ndarray"):
+                        return handler(value, value_dtype)
+                    return handler(value)
+                
+
+        return value
+    
     def _serialize_slice(self, value: slice):
         return {"start": value.start, "stop": value.stop, "step": value.step}
+    
+    def _deserialize_slice(self, value):
+        return slice(
+            start=value.get("start"),
+            stop=value.get("stop"),
+            step=value.get("step"),
+        )
 
     def _serialize_type(self, value: type):
         return {"type_name": value.__name__}
+    
+    def _deserialize_type(self, value):
+        # Deserialize Python type objects from their string name
+        # Default to float if not found
+        return getattr(__builtins__, value["type_name"], float) 
 
-    def _get_handlers(self):
+    def _get_serializer_handlers(self):
         """Each mixin extends this list."""
         return [
             (slice, self._serialize_slice),
             (type, self._serialize_type),
+        ]
+    
+    def _get_deserializer_handlers(self):
+        return [
+            ("bool", bool),
+            ("float", float),
+            ("int", int),
+            ("slice", self._deserialize_slice),
+            ("str", str),
+            ("type", self._deserialize_type),
+            ("tuple", tuple),
         ]
 
 
@@ -74,8 +121,8 @@ class NumpySerializerMixin(SerializerMixin):
     def _serialize_generic(self, value: np.generic):
         return value.item()
 
-    def _get_handlers(self):
-        return super()._get_handlers() + [
+    def _get_serializer_handlers(self):
+        return super()._get_serializer_handlers() + [
             (np.ndarray, self._serialize_ndarray),
             (np.generic, self._serialize_generic),
             (np.dtype, str),
@@ -84,6 +131,18 @@ class NumpySerializerMixin(SerializerMixin):
                 np.random.RandomState,
                 lambda v: [self.convert_to_serializable(x) for x in v.get_state()],
             ),
+        ]
+    
+    def _get_deserializer_handlers(self):
+        return super()._get_deserializer_handlers() + [
+            ("ndarray", lambda v, dt=None: np.array(v, dtype=(dt or None))),
+            ("generic", lambda v: np.array(v).item()),
+            ("float64", np.float64),
+            ("int32",  int),
+            ("int64",  int),
+            ("dtype",  np.dtype),
+            ("Float64DType", np.dtype),
+            ("RandomState", np.random.RandomState),
         ]
 
 
@@ -96,6 +155,16 @@ class ScipySerializerMixin(SerializerMixin):
             "indices": self.convert_to_serializable(csr_value.indices.astype(np.int32)),
             "shape": self.convert_to_serializable(csr_value.shape),
         }
+    
+    def _deserialize_crs_matrix(self, value, value_dtype=None):
+        return csr_matrix(
+            (
+                np.array(value["data"], dtype=value_dtype or np.float64),
+                np.array(value["indices"], dtype=np.int32),
+                np.array(value["indptr"], dtype=np.int32),
+            ),
+            shape=tuple(value["shape"])
+        )
 
     def _serialize_interp1d(self, value: interp1d):
         fill_value = getattr(value, "fill_value", np.nan)
@@ -111,13 +180,38 @@ class ScipySerializerMixin(SerializerMixin):
             "axis": getattr(value, "axis", -1),
             "copy": getattr(value, "copy", True),
         }
+    
+    def _deserialize_interp1d(self, value, value_dtype=None):
+        return interp1d(
+                    x=value["x"],
+                    y=value["y"],
+                    kind=value["kind"],
+                    fill_value=value["fill_value"],
+                    bounds_error=value["bounds_error"],
+                    assume_sorted=value["assume_sorted"],
+                    axis=value["axis"],
+                    copy=value["copy"],
+                )
 
     def _serialize_scipy_dist(self, value: rv_continuous_frozen):
         return {"dist_name": value.dist.name, "args": value.args, "kwargs": value.kwds}
 
-    def _get_handlers(self):
-        return super()._get_handlers() + [
+    def _deserialize_scipy_dist(self, value, value_dtype=None):
+        dist = getattr(scipy.stats, value["dist_name"])
+        return dist(*value["args"], **value["kwargs"])
+
+    def _get_serializer_handlers(self):
+        return super()._get_serializer_handlers() + [
             (csr_matrix, self._serialize_csr_matrix),
             (interp1d, self._serialize_interp1d),
             (rv_continuous_frozen, self._serialize_scipy_dist),
         ]
+    
+    def _get_deserializer_handlers(self):
+        return super()._get_deserializer_handlers() + [
+            ("csr_matrix", self._deserialize_crs_matrix),
+            ("interp1d", self._deserialize_interp1d),
+            ("scipy_dist", self._deserialize_scipy_dist)
+        ]
+
+    

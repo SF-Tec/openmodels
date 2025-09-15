@@ -286,7 +286,7 @@ class SklearnSerializer(
             if name not in NOT_SUPPORTED_ESTIMATORS
         ]
 
-    def _get_handlers(self):
+    def _get_serializer_handlers(self):
         # important to run before super() to deal with possible np.ndarray of estimators
         return [
             (BaseEstimator, self.serialize),
@@ -294,7 +294,27 @@ class SklearnSerializer(
             (KDTree, self._serialize_kdtree),
             (BaseLoss, self._serialize_loss),
             (np.ndarray, self._serialize_estimators_ndarray),
-        ] + super()._get_handlers()
+        ] + super()._get_serializer_handlers()
+    
+    def _get_deserializer_handlers(self):
+        # Register losses
+        loss_handlers = [
+            (loss_name, (lambda v, ln=loss_name: self._deserialize_loss(v, ln)))
+            for loss_name in LOSS_CLASS_REGISTRY.keys()
+        ]
+        # Estimators
+        estimator_handlers = [
+            (
+                est_name,
+                (lambda v: self.deserialize(v))
+            )
+            for est_name in ALL_ESTIMATORS.keys()
+        ]
+        return (
+            loss_handlers 
+            + estimator_handlers
+            + super()._get_deserializer_handlers()
+        )
 
     def _serialize_tree(self, tree: Tree) -> Dict[str, Any]:
         """
@@ -365,7 +385,12 @@ class SklearnSerializer(
         # Fix for TweedieRegressor: ensure 'power' is not None
         if "power" in params and params["power"] is None:
             params["power"] = getattr(value, "power", 0.0)
-        return {"params": params}
+        return {"params": params}  
+
+    def _deserialize_loss(self, value: Dict[str, Any], loss_name:str) -> BaseLoss:
+        loss_cls = LOSS_CLASS_REGISTRY[loss_name]
+        params = value.get("params", {})
+        return loss_cls(**params)
 
     def _serialize_kdtree(self, value: KDTree) -> Dict[str, Any]:
         """
@@ -398,94 +423,6 @@ class SklearnSerializer(
                 ]
         # Regular array handling
         return self._serialize_ndarray(value)
-
-    def _convert_to_sklearn_types(
-        self, value: Any, attr_type: Any = "none", attr_dtype: Optional[str] = None
-    ) -> Any:
-        """
-        Convert a JSON-deserialized value to its scikit-learn type.
-
-        """
-
-        # Recursive case: if attr_type is a list, process each element in value
-        if isinstance(attr_type, list) and isinstance(value, list):
-            return [
-                self._convert_to_sklearn_types(v, t, attr_dtype)
-                for v, t in zip(value, attr_type)
-            ]
-
-        if isinstance(attr_type, str):
-            if attr_type == "interp1d":
-                # Deserialize interp1d objects
-                return interp1d(
-                    x=value["x"],
-                    y=value["y"],
-                    kind=value["kind"],
-                    fill_value=value["fill_value"],
-                    bounds_error=value["bounds_error"],
-                    assume_sorted=value["assume_sorted"],
-                    axis=value["axis"],
-                    copy=value["copy"],
-                )
-            if attr_type == "RandomState":
-                # Deserialize RandomState objects
-                return np.random.RandomState(value)
-            if attr_type == "type":
-                # Deserialize Python type objects from their string name
-                return getattr(
-                    __builtins__, value["type_name"], float
-                )  # Default to float if not found
-
-            if attr_type in LOSS_CLASS_REGISTRY:
-                loss_cls = LOSS_CLASS_REGISTRY[attr_type]
-                params = value.get("params", {})
-                return loss_cls(**params)
-
-            if attr_type == "slice":
-                return slice(value["start"], value["stop"], value["step"])
-
-            if attr_type == "scipy_dist":
-                dist = getattr(scipy.stats, value["dist_name"])
-                return dist(*value["args"], **value["kwargs"])
-
-            if attr_type == "csr_matrix":
-                # Ensure all sparse matrix components are of correct dtype
-                return csr_matrix(
-                    (
-                        np.array(value["data"], dtype=attr_dtype or np.float64),
-                        np.array(value["indices"], dtype=np.int32),
-                        np.array(value["indptr"], dtype=np.int32),
-                    ),
-                    shape=tuple(value["shape"]),
-                )
-            converters: Dict[str, ConverterFunc] = {
-                "int": int,
-                "int64": np.int64,
-                "int32": np.int32,
-                "float": float,
-                "float64": np.float64,
-                "dtype": np.dtype,
-                "Float64DType": np.dtype,
-                "str": str,
-                "tuple": tuple,
-                "ndarray": lambda x: np.array(
-                    x, dtype=attr_dtype if attr_dtype else None
-                ),
-            }
-
-            if attr_type in converters:
-                return converters[attr_type](value)
-
-            if attr_type in ALL_ESTIMATORS:
-                # This is an estimator type
-                if "attributes" not in value:
-                    estimator_class = ALL_ESTIMATORS[value["estimator_class"]]
-                    return estimator_class(**value["params"])
-                return self.deserialize(value)
-
-            return value  # Return as-is if no specific conversion is needed
-
-        return value
 
     def _get_nested_types(self, item: Any) -> Any:
         """
@@ -674,7 +611,7 @@ class SklearnSerializer(
             if param_name not in valid_args:
                 continue
             param_type = param_types.get(param_name)
-            param_dtype = param_dtypes.get(param_name)
+            param_dtype = param_dtypes.get(param_name) or None
             # Special handling for Pipeline steps
             if estimator_class == "Pipeline" and param_name == "steps":
                 reconstructed_params[param_name] = [
@@ -689,14 +626,17 @@ class SklearnSerializer(
                     for name, est in param_value
                 ]
             else:
-                reconstructed_params[param_name] = self._convert_to_sklearn_types(
+                reconstructed_params[param_name] = self.convert_from_serializable(
                     param_value, param_type, param_dtype
                 )
         model = estimator_cls(**reconstructed_params)
 
+        if "attributes" not in data:
+            return model  # Unfitted model
+
         for attribute, value in data["attributes"].items():
             attr_type = data["attribute_types"].get(attribute)
-            attr_dtype = data.get("attribute_dtypes", {}).get(attribute)
+            attr_dtype = data.get("attribute_dtypes", {}).get(attribute) or None
             # Handle tree_ separately
             if attr_type == "Tree":
                 model.tree_ = self._deserialize_tree(value)
@@ -707,11 +647,11 @@ class SklearnSerializer(
                 continue
             if estimator_class == "Pipeline" and attribute == "steps":
                 continue
-            # Use _convert_to_sklearn_types for all attributes
+            # Use convert_from_serializable for all attributes
             setattr(
                 model,
                 attribute,
-                self._convert_to_sklearn_types(value, attr_type, attr_dtype),
+                self.convert_from_serializable(value, attr_type, attr_dtype),
             )
 
         return model
