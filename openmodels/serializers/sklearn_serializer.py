@@ -8,12 +8,8 @@ converted to and from dictionary representations.
 from typing import Any, Callable, Dict, List, Tuple, Type, Optional
 import numpy as np
 import inspect
-from scipy.interpolate import interp1d  # type: ignore
-from scipy.sparse import csr_matrix  # type: ignore
-import scipy.stats  # type: ignore
 
 import sklearn
-
 from sklearn._loss.loss import (
     AbsoluteError,
     HalfBinomialLoss,
@@ -295,7 +291,7 @@ class SklearnSerializer(
             (BaseLoss, self._serialize_loss),
             (np.ndarray, self._serialize_estimators_ndarray),
         ] + super()._get_serializer_handlers()
-    
+
     def _get_deserializer_handlers(self):
         # Register losses
         loss_handlers = [
@@ -304,17 +300,10 @@ class SklearnSerializer(
         ]
         # Estimators
         estimator_handlers = [
-            (
-                est_name,
-                (lambda v: self.deserialize(v))
-            )
+            (est_name, (lambda v: self.deserialize(v)))
             for est_name in ALL_ESTIMATORS.keys()
         ]
-        return (
-            loss_handlers 
-            + estimator_handlers
-            + super()._get_deserializer_handlers()
-        )
+        return loss_handlers + estimator_handlers + super()._get_deserializer_handlers()
 
     def _serialize_tree(self, tree: Tree) -> Dict[str, Any]:
         """
@@ -385,9 +374,9 @@ class SklearnSerializer(
         # Fix for TweedieRegressor: ensure 'power' is not None
         if "power" in params and params["power"] is None:
             params["power"] = getattr(value, "power", 0.0)
-        return {"params": params}  
+        return {"params": params}
 
-    def _deserialize_loss(self, value: Dict[str, Any], loss_name:str) -> BaseLoss:
+    def _deserialize_loss(self, value: Dict[str, Any], loss_name: str) -> BaseLoss:
         loss_cls = LOSS_CLASS_REGISTRY[loss_name]
         params = value.get("params", {})
         return loss_cls(**params)
