@@ -58,6 +58,7 @@ class SerializerMixin:
 
         return value
 
+    # --- Python-native specific serializers/deserializers ---
     def _serialize_slice(self, value: slice):
         return {"start": value.start, "stop": value.stop, "step": value.step}
 
@@ -76,6 +77,7 @@ class SerializerMixin:
         # Default to float if not found
         return getattr(__builtins__, value["type_name"], float)
 
+    # --- Handlers ---
     def _get_serializer_handlers(self):
         """Each mixin extends this list."""
         return [
@@ -96,6 +98,7 @@ class SerializerMixin:
 
 
 class NumpySerializerMixin(SerializerMixin):
+    # --- Helpers ---
     def _get_dtype(self, value: Any) -> str:
         """
         Get the dtype of a numpy array, otherwise return empty string.
@@ -111,12 +114,14 @@ class NumpySerializerMixin(SerializerMixin):
                 return "float64"  # Use float64 for float lists
         return ""
 
+    # --- NumPy specific serializers/deserializers ---
     def _serialize_ndarray(self, value: np.ndarray):
         return self.convert_to_serializable(value.tolist())
 
     def _serialize_generic(self, value: np.generic):
         return value.item()
 
+    # --- Handlers ---
     def _get_serializer_handlers(self):
         return super()._get_serializer_handlers() + [
             (np.ndarray, self._serialize_ndarray),
@@ -143,6 +148,7 @@ class NumpySerializerMixin(SerializerMixin):
 
 
 class ScipySerializerMixin(SerializerMixin):
+    # --- SciPy specific serializers/deserializers  ---
     def _serialize_csr_matrix(self, value: csr_matrix):
         csr_value = csr_matrix(value)
         return {
@@ -152,7 +158,7 @@ class ScipySerializerMixin(SerializerMixin):
             "shape": self.convert_to_serializable(csr_value.shape),
         }
 
-    def _deserialize_crs_matrix(self, value, value_dtype=None):
+    def _deserialize_csr_matrix(self, value, value_dtype=None):
         return csr_matrix(
             (
                 np.array(value["data"], dtype=value_dtype or np.float64),
@@ -196,6 +202,7 @@ class ScipySerializerMixin(SerializerMixin):
         dist = getattr(scipy.stats, value["dist_name"])
         return dist(*value["args"], **value["kwargs"])
 
+    # --- Handlers ---
     def _get_serializer_handlers(self):
         return super()._get_serializer_handlers() + [
             (csr_matrix, self._serialize_csr_matrix),
@@ -205,7 +212,7 @@ class ScipySerializerMixin(SerializerMixin):
 
     def _get_deserializer_handlers(self):
         return super()._get_deserializer_handlers() + [
-            ("csr_matrix", self._deserialize_crs_matrix),
+            ("csr_matrix", self._deserialize_csr_matrix),
             ("interp1d", self._deserialize_interp1d),
             ("scipy_dist", self._deserialize_scipy_dist),
         ]

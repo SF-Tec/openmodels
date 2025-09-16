@@ -41,6 +41,13 @@ Follow OpenModels coding style:
 - Format code using [Black](https://black.readthedocs.io/en/stable/)
 
 Before submitting your changes, please ensure your code passes formatting, linting, and type checks by running:
+
+```bash
+poetry run black openmodels
+poetry run flake8 openmodels
+poetry run mypy openmodels  
+
+```
 ## Codecov
 
 Ensure your changes don't reduce OpenModels's test coverage. We use Codecov to track coverage.

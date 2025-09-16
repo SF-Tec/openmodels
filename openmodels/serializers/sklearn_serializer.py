@@ -235,6 +235,7 @@ class SklearnSerializer(
         A list of supported types for serialization.
     """
 
+    # --- Helpers ---
     def _check_version(self, stored_version: Optional[str]) -> None:
         """
         Check compatibility between stored scikit-learn version and the current environment.
@@ -282,6 +283,77 @@ class SklearnSerializer(
             if name not in NOT_SUPPORTED_ESTIMATORS
         ]
 
+    def _get_nested_types(self, item: Any) -> Any:
+        """
+        Recursively determine the type of elements within nested lists.
+
+        Parameters
+        ----------
+        item : Any
+            The item to inspect for nested types.
+
+        Returns
+        -------
+        Any
+            A nested list representing the types of elements in the input item.
+
+        Examples
+        ---------
+
+        [1, [1, 2, [1, 2, 3]], 2] -> ['int',['int','int','ndarray'],'int']
+
+        """
+        if isinstance(item, List) and item:  # If it's a list and not empty
+            return [self._get_nested_types(subitem) for subitem in item]
+        elif isinstance(item, BaseEstimator):
+            # For estimators, return their class name instead of just 'BaseEstimator'
+            return item.__class__.__name__
+        else:
+            # Return the type name if it's not a list or it's an empty list
+            return type(item).__name__
+
+    def _get_type_maps(self, values_dict: dict) -> tuple[dict, dict]:
+        """
+        Given a dict of raw values (e.g. model attributes or params),
+        builds the corresponding types/dtypes maps.
+        """
+        types_map = {
+            key: self._get_nested_types(value) for key, value in values_dict.items()
+        }
+        dtypes_map = {
+            key: self._get_dtype(value)
+            for key, value in values_dict.items()
+            if isinstance(value, np.ndarray)
+            or (isinstance(value, (list, tuple)) and value)  # non-empty list/tuple
+        }
+
+        return types_map, dtypes_map
+
+    def _extract_estimator_attributes(self, estimator: BaseEstimator) -> Dict[str, Any]:
+        """
+        Extract fitted sklearn attributes,
+        """
+
+        def is_valid_attribute(key: str) -> bool:
+            return (
+                not key.startswith("__")  # not private/internal
+                and key.endswith("_")  # sklearn convention
+                and not key.endswith("__")  # not dunder
+                and not isinstance(
+                    getattr(type(estimator), key, None), property
+                )  # not property
+                and not callable(getattr(estimator, key))  # not method
+            )
+
+        # Collect attributes
+        attribute_keys = [key for key in dir(estimator) if is_valid_attribute(key)]
+        attribute_keys += ATTRIBUTE_EXCEPTIONS.get(estimator.__class__.__name__, [])
+
+        attributes = {key: getattr(estimator, key) for key in attribute_keys}
+
+        return attributes
+
+    # --- Handlers ---
     def _get_serializer_handlers(self):
         # important to run before super() to deal with possible np.ndarray of estimators
         return [
@@ -305,6 +377,7 @@ class SklearnSerializer(
         ]
         return loss_handlers + estimator_handlers + super()._get_deserializer_handlers()
 
+    # --- Sklearn specific serializers/deserializers ---
     def _serialize_tree(self, tree: Tree) -> Dict[str, Any]:
         """
         Serializes a sklearn.tree._tree.Tree object to a dictionary.
@@ -412,76 +485,6 @@ class SklearnSerializer(
                 ]
         # Regular array handling
         return self._serialize_ndarray(value)
-
-    def _get_nested_types(self, item: Any) -> Any:
-        """
-        Recursively determine the type of elements within nested lists.
-
-        Parameters
-        ----------
-        item : Any
-            The item to inspect for nested types.
-
-        Returns
-        -------
-        Any
-            A nested list representing the types of elements in the input item.
-
-        Examples
-        ---------
-
-        [1, [1, 2, [1, 2, 3]], 2] -> ['int',['int','int','ndarray'],'int']
-
-        """
-        if isinstance(item, List) and item:  # If it's a list and not empty
-            return [self._get_nested_types(subitem) for subitem in item]
-        elif isinstance(item, BaseEstimator):
-            # For estimators, return their class name instead of just 'BaseEstimator'
-            return item.__class__.__name__
-        else:
-            # Return the type name if it's not a list or it's an empty list
-            return type(item).__name__
-
-    def _get_type_maps(self, values_dict: dict) -> tuple[dict, dict]:
-        """
-        Given a dict of raw values (e.g. model attributes or params),
-        builds the corresponding types/dtypes maps.
-        """
-        types_map = {
-            key: self._get_nested_types(value) for key, value in values_dict.items()
-        }
-        dtypes_map = {
-            key: self._get_dtype(value)
-            for key, value in values_dict.items()
-            if isinstance(value, np.ndarray)
-            or (isinstance(value, (list, tuple)) and value)  # non-empty list/tuple
-        }
-
-        return types_map, dtypes_map
-
-    def _extract_estimator_attributes(self, estimator: BaseEstimator) -> Dict[str, Any]:
-        """
-        Extract fitted sklearn attributes,
-        """
-
-        def is_valid_attribute(key: str) -> bool:
-            return (
-                not key.startswith("__")  # not private/internal
-                and key.endswith("_")  # sklearn convention
-                and not key.endswith("__")  # not dunder
-                and not isinstance(
-                    getattr(type(estimator), key, None), property
-                )  # not property
-                and not callable(getattr(estimator, key))  # not method
-            )
-
-        # Collect attributes
-        attribute_keys = [key for key in dir(estimator) if is_valid_attribute(key)]
-        attribute_keys += ATTRIBUTE_EXCEPTIONS.get(estimator.__class__.__name__, [])
-
-        attributes = {key: getattr(estimator, key) for key in attribute_keys}
-
-        return attributes
 
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
