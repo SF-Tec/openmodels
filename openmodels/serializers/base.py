@@ -52,7 +52,7 @@ class SerializerMixin:
         if isinstance(value_type, str):
             for typ_name, handler in self._get_deserializer_handlers():
                 if typ_name == value_type:
-                    if value_type in ("ndarray"):
+                    if value_type == "ndarray":
                         return handler(value, value_dtype)
                     return handler(value)
 
