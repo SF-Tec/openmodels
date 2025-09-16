@@ -372,8 +372,7 @@ class SklearnSerializer(
         ]
         # Estimators
         estimator_handlers = [
-            (est_name, self.deserialize)
-            for est_name in ALL_ESTIMATORS.keys()
+            (est_name, self.deserialize) for est_name in ALL_ESTIMATORS.keys()
         ]
         return loss_handlers + estimator_handlers + super()._get_deserializer_handlers()
 
