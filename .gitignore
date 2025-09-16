@@ -49,4 +49,3 @@ sklearn_json.egg-info/
 # Testing #
 ###########
 test/temp/*.json
-testpypi-badge.json
