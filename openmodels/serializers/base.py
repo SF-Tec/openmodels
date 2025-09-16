@@ -18,8 +18,8 @@ from typing import Any, Optional
 
 class SerializerMixin:
     """
-    Base mixin providing recursive serialization and, native python objects
-    serialization a dispatch mechanism. Other mixins only need to implement
+    Base mixin providing recursive serialization and native Python object
+    serialization with a dispatch mechanism. Other mixins only need to implement
     `_get_handlers()` and serialization helpers.
     """
 
