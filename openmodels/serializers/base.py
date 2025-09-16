@@ -74,8 +74,17 @@ class SerializerMixin:
 
     def _deserialize_type(self, value):
         # Deserialize Python type objects from their string name
-        # Default to float if not found
-        return getattr(__builtins__, value["type_name"], float)
+        # Only allow a safe whitelist of types; default to float if not found
+        allowed_types = {
+            "int": int,
+            "float": float,
+            "str": str,
+            "bool": bool,
+            "tuple": tuple,
+            "list": list,
+            "dict": dict,
+        }
+        return allowed_types.get(value["type_name"], float)
 
     # --- Handlers ---
     def _get_serializer_handlers(self):
