@@ -374,14 +374,19 @@ class SklearnSerializer(
         estimator_handlers = [
             (est_name, self.deserialize) for est_name in ALL_ESTIMATORS.keys()
         ]
-        return  [
-            ("RBF", lambda v: self._deserialize_kernel(v)),
-            ("WhiteKernel", lambda v: self._deserialize_kernel(v)),
-            ("Sum", lambda v: self._deserialize_kernel(v)),
-            ("Product", lambda v: self._deserialize_kernel(v)),
-            ("ConstantKernel", lambda v: self._deserialize_kernel(v)),
-            ("DotProduct", lambda v: self._deserialize_kernel(v)),
-        ] + loss_handlers + estimator_handlers + super()._get_deserializer_handlers()
+        return (
+            [
+                ("RBF", self._deserialize_kernel),
+                ("WhiteKernel", self._deserialize_kernel),
+                ("Sum", self._deserialize_kernel),
+                ("Product", self._deserialize_kernel),
+                ("ConstantKernel", self._deserialize_kernel),
+                ("DotProduct", self._deserialize_kernel),
+            ]
+            + loss_handlers
+            + estimator_handlers
+            + super()._get_deserializer_handlers()
+        )
 
     # --- Sklearn specific serializers/deserializers ---
     def _serialize_tree(self, tree: Tree) -> Dict[str, Any]:
@@ -516,7 +521,10 @@ class SklearnSerializer(
         """
         kernel_type = data["kernel_type"]
         params = data["params"]
-        kernel_cls = getattr(__import__("sklearn.gaussian_process.kernels", fromlist=[kernel_type]), kernel_type)
+        kernel_cls = getattr(
+            __import__("sklearn.gaussian_process.kernels", fromlist=[kernel_type]),
+            kernel_type,
+        )
         deserialized_params = {}
         for k, v in params.items():
             if isinstance(v, dict) and "kernel_type" in v:
@@ -524,7 +532,7 @@ class SklearnSerializer(
             else:
                 deserialized_params[k] = v
         return kernel_cls(**deserialized_params)
-    
+
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
         Serialize a scikit-learn estimator to a dictionary.
@@ -559,9 +567,8 @@ class SklearnSerializer(
         # Extract and build estimator params and its types/dtypes map
         params = model.get_params(deep=False)
         param_types, param_dtypes = self._get_type_maps(params)
-        #print("param_types=",param_types)
-        #print("param_dtypes=",param_dtypes)
-
+        # print("param_types=",param_types)
+        # print("param_dtypes=",param_dtypes)
 
         # Build serializable estimator including extra info
         serialized_estimator = {
@@ -582,12 +589,11 @@ class SklearnSerializer(
         # Extract and build fitted attributes and its types/dtypes map
         attributes = self._extract_estimator_attributes(model)
         attribute_types, attribute_dtypes = self._get_type_maps(attributes)
-        #print("attributes=",attributes)
-        #print("attribute_types=",attribute_types)
-        #print("attribute_dtypes=", attribute_dtypes)
+        # print("attributes=",attributes)
+        # print("attribute_types=",attribute_types)
+        # print("attribute_dtypes=", attribute_dtypes)
         serializable_attributes = self.convert_to_serializable(attributes)
-        #print("serializable_attributes=",serializable_attributes)
-
+        # print("serializable_attributes=",serializable_attributes)
 
         return {
             **serialized_estimator,
