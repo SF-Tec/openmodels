@@ -96,7 +96,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "KNeighborsTransformer",  # ValueError:
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
     # an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
-    "LinearDiscriminantAnalysis",  # This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
+    #"LinearDiscriminantAnalysis",  # This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
     "LabelBinarizer",  # LabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
     "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
@@ -518,7 +518,17 @@ class SklearnSerializer(
         """
         # Extract and build estimator params and its types/dtypes map
         params = model.get_params()
+        # Exclude nested parameters (those containing '__') which are used for sub-estimators in pipelines or grid searches
+        params = {k: v for k, v in model.get_params().items() if '__' not in k}
         param_types, param_dtypes = self._get_type_maps(params)
+        #print("param_types=",param_types)
+        #print("param_dtypes=",param_dtypes)
+        #kernel = params["kernel__k1"]   
+        #print('kernel=',kernel)
+        #print('kernelType=',type(kernel))
+        #print('kernelType name=',type(kernel).__name__)
+        
+
 
         # Build serializable estimator including extra info
         serialized_estimator = {
@@ -539,7 +549,17 @@ class SklearnSerializer(
         # Extract and build fitted attributes and its types/dtypes map
         attributes = self._extract_estimator_attributes(model)
         attribute_types, attribute_dtypes = self._get_type_maps(attributes)
+        print("attribute_types=",attribute_types)
+        print("attribute_dtypes=", attribute_dtypes)
         serializable_attributes = self.convert_to_serializable(attributes)
+        print("serializable_attributes=",serializable_attributes)
+
+        print({
+            **serialized_estimator,
+            "attributes": serializable_attributes,
+            "attribute_types": attribute_types,
+            "attribute_dtypes": attribute_dtypes,
+        })
 
         return {
             **serialized_estimator,
