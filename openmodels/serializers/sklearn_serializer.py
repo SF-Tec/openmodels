@@ -10,6 +10,7 @@ import numpy as np
 import inspect
 
 import sklearn
+from sklearn.gaussian_process.kernels import Kernel
 from sklearn._loss.loss import (
     AbsoluteError,
     HalfBinomialLoss,
@@ -58,7 +59,6 @@ TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
-    "GaussianProcessRegressor",  # Object of type Product is not JSON serializable
     "GradientBoostingRegressor",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
     # Classifiers:
@@ -96,7 +96,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "KNeighborsTransformer",  # ValueError:
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
     # an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
-    #"LinearDiscriminantAnalysis",  # This LinearDiscriminantAnalysis estimator requires y to be passed, but the target y is None
     "LabelBinarizer",  # LabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
     "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
@@ -140,7 +139,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "KNeighborsRegressor": ["_fit_method", "_fit_X", "_y"],
     "NuSVR": ["_sparse", "_gamma", "_n_support", "_probA", "_probB"],
     "TweedieRegressor": ["_base_loss"],
-    "GaussianProcessRegressor": ["kernel_"],
+    "GaussianProcessRegressor": ["kernel_", "_y_train_std", "_y_train_mean"],
     "HistGradientBoostingRegressor": [
         "_loss",
         "_preprocessor",
@@ -358,9 +357,10 @@ class SklearnSerializer(
         # important to run before super() to deal with possible np.ndarray of estimators
         return [
             (BaseEstimator, self.serialize),
-            (Tree, self._serialize_tree),
-            (KDTree, self._serialize_kdtree),
             (BaseLoss, self._serialize_loss),
+            (KDTree, self._serialize_kdtree),
+            (Kernel, self._serialize_kernel),
+            (Tree, self._serialize_tree),
             (np.ndarray, self._serialize_estimators_ndarray),
         ] + super()._get_serializer_handlers()
 
@@ -374,7 +374,14 @@ class SklearnSerializer(
         estimator_handlers = [
             (est_name, self.deserialize) for est_name in ALL_ESTIMATORS.keys()
         ]
-        return loss_handlers + estimator_handlers + super()._get_deserializer_handlers()
+        return  [
+            ("RBF", lambda v: self._deserialize_kernel(v)),
+            ("WhiteKernel", lambda v: self._deserialize_kernel(v)),
+            ("Sum", lambda v: self._deserialize_kernel(v)),
+            ("Product", lambda v: self._deserialize_kernel(v)),
+            ("ConstantKernel", lambda v: self._deserialize_kernel(v)),
+            ("DotProduct", lambda v: self._deserialize_kernel(v)),
+        ] + loss_handlers + estimator_handlers + super()._get_deserializer_handlers()
 
     # --- Sklearn specific serializers/deserializers ---
     def _serialize_tree(self, tree: Tree) -> Dict[str, Any]:
@@ -485,6 +492,39 @@ class SklearnSerializer(
         # Regular array handling
         return self._serialize_ndarray(value)
 
+    def _serialize_kernel(self, kernel: Kernel) -> dict:
+        """
+        Recursively serialize a sklearn.gaussian_process.kernels.Kernel object.
+        """
+        kernel_type = type(kernel).__name__
+        params = kernel.get_params(deep=False)
+        # Recursively serialize kernel parameters that are also kernels
+        serialized_params = {}
+        for k, v in params.items():
+            if isinstance(v, Kernel):
+                serialized_params[k] = self._serialize_kernel(v)
+            else:
+                serialized_params[k] = v
+        return {
+            "kernel_type": kernel_type,
+            "params": serialized_params,
+        }
+
+    def _deserialize_kernel(self, data: dict) -> Kernel:
+        """
+        Recursively deserialize a kernel dict back to a Kernel object.
+        """
+        kernel_type = data["kernel_type"]
+        params = data["params"]
+        kernel_cls = getattr(__import__("sklearn.gaussian_process.kernels", fromlist=[kernel_type]), kernel_type)
+        deserialized_params = {}
+        for k, v in params.items():
+            if isinstance(v, dict) and "kernel_type" in v:
+                deserialized_params[k] = self._deserialize_kernel(v)
+            else:
+                deserialized_params[k] = v
+        return kernel_cls(**deserialized_params)
+    
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
         Serialize a scikit-learn estimator to a dictionary.
@@ -517,17 +557,10 @@ class SklearnSerializer(
         >>> serialized_dict = serializer.serialize(model)
         """
         # Extract and build estimator params and its types/dtypes map
-        params = model.get_params()
-        # Exclude nested parameters (those containing '__') which are used for sub-estimators in pipelines or grid searches
-        params = {k: v for k, v in model.get_params().items() if '__' not in k}
+        params = model.get_params(deep=False)
         param_types, param_dtypes = self._get_type_maps(params)
         #print("param_types=",param_types)
         #print("param_dtypes=",param_dtypes)
-        #kernel = params["kernel__k1"]   
-        #print('kernel=',kernel)
-        #print('kernelType=',type(kernel))
-        #print('kernelType name=',type(kernel).__name__)
-        
 
 
         # Build serializable estimator including extra info
@@ -549,17 +582,12 @@ class SklearnSerializer(
         # Extract and build fitted attributes and its types/dtypes map
         attributes = self._extract_estimator_attributes(model)
         attribute_types, attribute_dtypes = self._get_type_maps(attributes)
-        print("attribute_types=",attribute_types)
-        print("attribute_dtypes=", attribute_dtypes)
+        #print("attributes=",attributes)
+        #print("attribute_types=",attribute_types)
+        #print("attribute_dtypes=", attribute_dtypes)
         serializable_attributes = self.convert_to_serializable(attributes)
-        print("serializable_attributes=",serializable_attributes)
+        #print("serializable_attributes=",serializable_attributes)
 
-        print({
-            **serialized_estimator,
-            "attributes": serializable_attributes,
-            "attribute_types": attribute_types,
-            "attribute_dtypes": attribute_dtypes,
-        })
 
         return {
             **serialized_estimator,
