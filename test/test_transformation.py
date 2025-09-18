@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_classification
 from sklearn.feature_extraction import FeatureHasher
-from openmodels.test_helpers import run_test_model
+from openmodels.test_helpers import run_test_model, run_test_label_binarizer
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
 from test.test_regression import REGRESSORS
 from test.test_classification import CLASSIFIERS
@@ -112,7 +112,13 @@ def test_transformer(Transformer, data):
         dictionary = rng.rand(n_components, n_features)
         args["dictionary"] = dictionary
 
-
     transformer = Transformer(**args)
+    if Transformer.__name__ == "LabelBinarizer":
+        # Ensure y is a 1D array of discrete labels
+        _, y_int = np.unique(y, return_inverse=True)
+        y_int = y_int.astype(int)
+        # Only y is used for fit/transform; x is ignored
+        run_test_label_binarizer(transformer, y_int, f"{Transformer.__name__.lower()}.json")
+        return
 
     run_test_model(transformer, x, y, x_sparse, None, f"{Transformer.__name__.lower()}.json")

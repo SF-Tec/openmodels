@@ -78,14 +78,10 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Classifiers:
     "GaussianProcessClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneVsRestClassifier
     "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
-    "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
-    "OneVsRestClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
     "Perceptron",  # Object of type Hinge is not JSON serializable
-    "RidgeClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
-    "RidgeClassifierCV",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
     "StackingClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelEncoder
     "TunedThresholdClassifierCV",  # TypeError: Object of type _CurveScorer is not JSON serializable
@@ -98,7 +94,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Transformers:
     "ColumnTransformer",  # AttributeError: 'dict' object has no attribute 'transform'
     "DictVectorizer",  # ValueError:
-    "FeatureHasher",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
+    "FeatureHasher",  # TypeError: 'NoneType' object is not iterable
     "FeatureUnion",  # AttributeError: 'dict' object has no attribute 'transform'
     "GaussianRandomProjection",  # ValueError: setting an array element with a sequence. The requested array
     # has an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
@@ -108,7 +104,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "KNeighborsTransformer",  # ValueError:
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
     # an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
-    "LabelBinarizer",  # LabelBinarizer.fit() takes 2 positional arguments but 3 were given
+    #"LabelBinarizer",  # LabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
     "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.

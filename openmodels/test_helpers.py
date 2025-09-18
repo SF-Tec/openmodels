@@ -8,6 +8,7 @@ from typing import Optional, Union, Protocol, runtime_checkable, TypeVar, cast
 import numpy as np
 from numpy import testing
 from sklearn.base import BaseEstimator
+from sklearn.preprocessing import LabelBinarizer
 from scipy.sparse import csr_matrix  # type: ignore
 
 from openmodels import SerializationManager, SklearnSerializer
@@ -90,6 +91,11 @@ def fit_model(
     """
     if not isinstance(model, FittableModel):
         raise TypeError("Model must have a 'fit' method")
+    
+    # Special case for LabelBinarizer
+    if isinstance(model, LabelBinarizer):
+        model.fit(y)
+        return model
 
     if abs:
         if isinstance(x, csr_matrix):
@@ -307,3 +313,36 @@ def create_test_data(
     x = np.random.randn(n_samples, n_features)
     y = np.random.randint(0, 2, size=n_samples)
     return x, y
+
+def run_test_label_binarizer(
+    model: LabelBinarizer,
+    y: np.ndarray,
+    model_name: str,
+) -> None:
+    """
+    Special test for LabelBinarizer: fit and transform only use y.
+    """
+    # Fit the model
+    model.fit(y)
+    transformed = model.transform(y)
+
+    # Serialize and deserialize
+    manager = SerializationManager(SklearnSerializer())
+    serialized_model = manager.serialize(model, format_name="json")
+    deserialized_model = manager.deserialize(serialized_model, format_name="json")
+
+    # Test transform output
+    transformed_deserialized = deserialized_model.transform(y)
+    testing.assert_array_equal(transformed, transformed_deserialized)
+
+    # File round-trip
+    model_file_path = f"./test/temp/{model_name}.json"
+    os.makedirs(os.path.dirname(model_file_path), exist_ok=True)
+    with open(model_file_path, "w", encoding="utf-8") as f:
+        f.write(serialized_model)
+    with open(model_file_path, "r", encoding="utf-8") as f:
+        serialized_model_from_file = f.read()
+    deserialized_model_from_file = manager.deserialize(serialized_model_from_file, format_name="json")
+    transformed_from_file = deserialized_model_from_file.transform(y)
+    testing.assert_array_equal(transformed, transformed_from_file)
+    os.remove(model_file_path)
