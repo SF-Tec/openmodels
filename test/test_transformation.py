@@ -118,12 +118,13 @@ def test_transformer(Transformer, data):
     if Transformer.__name__ == "MultiLabelBinarizer":
         test_multilabelbinarizer_minimal()
         return
-    if Transformer.__name__ == "LabelBinarizer":
+    if Transformer.__name__ in ("LabelBinarizer", "LabelEncoder"):
         # Ensure y is a 1D array of discrete labels
         _, y_int = np.unique(y, return_inverse=True)
         y_int = y_int.astype(int)
         # Only y is used for fit/transform; x is ignored
         run_test_label_binarizer(transformer, y_int, f"{Transformer.__name__.lower()}.json")
         return
+
 
     run_test_model(transformer, x, y, x_sparse, None, f"{Transformer.__name__.lower()}.json")

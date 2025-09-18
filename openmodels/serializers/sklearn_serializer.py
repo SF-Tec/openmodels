@@ -76,16 +76,14 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors: all regressors work!! Hurray!
     # Exceptions encountered during testing:
     # Classifiers:
-    "GaussianProcessClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneVsRestClassifier
+    "GaussianProcessClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
     "Perceptron",  # Object of type Hinge is not JSON serializable
     "SGDClassifier",  # Object of type Hinge is not JSON serializable
-    "StackingClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelEncoder
     "TunedThresholdClassifierCV",  # TypeError: Object of type _CurveScorer is not JSON serializable
-    "VotingClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelEncoder
     # Clusters:
     "Birch",  # Object of type _CFNode is not JSON serializable
     "BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
@@ -96,16 +94,11 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "DictVectorizer",  # ValueError:
     "FeatureHasher",  # TypeError: 'NoneType' object is not iterable
     "FeatureUnion",  # AttributeError: 'dict' object has no attribute 'transform'
-    "GaussianRandomProjection",  # ValueError: setting an array element with a sequence. The requested array
-    # has an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
     "HashingVectorizer",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
     "KBinsDiscretizer",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
     "KNeighborsTransformer",  # ValueError:
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
-    # an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
-    "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
-    #"MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "OneHotEncoder",  # ValueError:
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
