@@ -78,8 +78,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors: all regressors work!! Hurray!
     # Exceptions encountered during testing:
     # Classifiers:
-    #"GaussianProcessClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
-    "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
+    #"GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     "TunedThresholdClassifierCV",  # TypeError: Object of type _CurveScorer is not JSON serializable
@@ -166,6 +165,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_predictors",
         "_bin_mapper",
     ],
+    "GradientBoostingClassifier":["_loss"],
     "MLPClassifier": ["_label_binarizer"],
     "NuSVC": ["_sparse", "_n_support", "_probA", "_probB", "_gamma", "_dual_coef_", "_intercept_"],
     "KNeighborsClassifier": ["_fit_method", "_fit_X", "_y", "_tree"],
