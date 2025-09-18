@@ -73,7 +73,9 @@ ALL_ESTIMATORS = {
 # add _BinMapper to ALL_ESTIMATORS
 ALL_ESTIMATORS["_BinMapper"] = _BinMapper
 ALL_ESTIMATORS["_SigmoidCalibration"] = _SigmoidCalibration
-ALL_ESTIMATORS["_BinaryGaussianProcessClassifierLaplace"] = _BinaryGaussianProcessClassifierLaplace
+ALL_ESTIMATORS["_BinaryGaussianProcessClassifierLaplace"] = (
+    _BinaryGaussianProcessClassifierLaplace
+)
 
 TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
@@ -84,7 +86,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     # Clusters:
-    #"Birch",  # Object of type _CFNode is not JSON serializable
     "BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
     "FeatureAgglomeration",  # Object of type _ArrayFunctionDispatcher is not JSON serializable
     "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8')...]" not understood
@@ -135,7 +136,15 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_gamma",
     ],
     "KNeighborsRegressor": ["_fit_method", "_fit_X", "_y"],
-    "NuSVR": ["_sparse", "_gamma", "_n_support", "_probA", "_probB", "_dual_coef_", "_intercept_"],
+    "NuSVR": [
+        "_sparse",
+        "_gamma",
+        "_n_support",
+        "_probA",
+        "_probB",
+        "_dual_coef_",
+        "_intercept_",
+    ],
     "TweedieRegressor": ["_base_loss"],
     "GaussianProcessRegressor": ["kernel_", "_y_train_std", "_y_train_mean"],
     "GradientBoostingRegressor": ["_loss"],
@@ -167,9 +176,17 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_predictors",
         "_bin_mapper",
     ],
-    "GradientBoostingClassifier":["_loss"],
+    "GradientBoostingClassifier": ["_loss"],
     "MLPClassifier": ["_label_binarizer"],
-    "NuSVC": ["_sparse", "_n_support", "_probA", "_probB", "_gamma", "_dual_coef_", "_intercept_"],
+    "NuSVC": [
+        "_sparse",
+        "_n_support",
+        "_probA",
+        "_probB",
+        "_gamma",
+        "_dual_coef_",
+        "_intercept_",
+    ],
     "KNeighborsClassifier": ["_fit_method", "_fit_X", "_y", "_tree"],
     "RadiusNeighborsClassifier": ["_fit_method", "_fit_X", "_y", "_tree"],
     "RidgeClassifier": ["_label_binarizer"],
@@ -212,7 +229,15 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_decision_path_lengths",
         "_average_path_length_per_tree",
     ],
-    "OneClassSVM": ["_sparse", "_n_support", "_probA", "_probB", "_gamma", "_dual_coef_", "_intercept_"],
+    "OneClassSVM": [
+        "_sparse",
+        "_n_support",
+        "_probA",
+        "_probB",
+        "_gamma",
+        "_dual_coef_",
+        "_intercept_",
+    ],
     "NearestNeighbors": ["_fit_method", "_tree", "_fit_X"],
 }
 
@@ -307,7 +332,11 @@ class SklearnSerializer(
         [1, [1, 2, [1, 2, 3]], 2] -> ['int',['int','int','ndarray'],'int']
 
         """
-        if isinstance(item, np.ndarray) and item.dtype == np.dtype("O") and item.size > 0:
+        if (
+            isinstance(item, np.ndarray)
+            and item.dtype == np.dtype("O")
+            and item.size > 0
+        ):
             first_elem = item.ravel()[0]
             if isinstance(first_elem, BaseEstimator):
                 return "estimators_ndarray"
@@ -415,13 +444,15 @@ class SklearnSerializer(
             "classes": self.convert_to_serializable(obj.classes),
             "method": obj.method,
         }
-    
+
     def _deserialize_calibrated_classifier(self, data: dict) -> "_CalibratedClassifier":
         estimator = self.deserialize(data["estimator"])
         calibrators = [self.deserialize(c) for c in data["calibrators"]]
         classes = np.array(data["classes"])
         method = data["method"]
-        return _CalibratedClassifier(estimator, calibrators, classes=classes, method=method)
+        return _CalibratedClassifier(
+            estimator, calibrators, classes=classes, method=method
+        )
 
     def _serialize_cfnode(self, node):
         """Recursively serialize a _CFNode."""
@@ -432,7 +463,7 @@ class SklearnSerializer(
             "branching_factor": node.branching_factor,
             "is_leaf": node.is_leaf,
             "n_features": node.n_features,
-            #dtype=X.dtype,
+            # dtype=X.dtype,
         }
 
     def _deserialize_cfnode(self, data):
@@ -443,7 +474,7 @@ class SklearnSerializer(
             branching_factor=data["branching_factor"],
             is_leaf=data["is_leaf"],
             n_features=data["n_features"],
-            dtype=np.float64  # or use dtype from centroids if needed
+            dtype=np.float64,  # or use dtype from centroids if needed
         )
         return node
 
@@ -503,26 +534,32 @@ class SklearnSerializer(
         """
         return {
             "nodes": self.convert_to_serializable(predictor.nodes),
-            "binned_left_cat_bitsets": self.convert_to_serializable(predictor.binned_left_cat_bitsets),
-            "raw_left_cat_bitsets": self.convert_to_serializable(predictor.raw_left_cat_bitsets),
+            "binned_left_cat_bitsets": self.convert_to_serializable(
+                predictor.binned_left_cat_bitsets
+            ),
+            "raw_left_cat_bitsets": self.convert_to_serializable(
+                predictor.raw_left_cat_bitsets
+            ),
         }
-    
+
     def _deserialize_tree_predictor(self, data: dict) -> TreePredictor:
-        node_dtype = np.dtype([
-            ('value', '<f8'),
-            ('count', '<u4'),
-            ('feature_idx', '<i8'),
-            ('num_threshold', '<f8'),
-            ('missing_go_to_left', 'u1'),
-            ('left', '<u4'),
-            ('right', '<u4'),
-            ('gain', '<f8'),
-            ('depth', '<u4'),
-            ('is_leaf', 'u1'),
-            ('bin_threshold', 'u1'),
-            ('is_categorical', 'u1'),
-            ('bitset_idx', '<u4')
-        ])
+        node_dtype = np.dtype(
+            [
+                ("value", "<f8"),
+                ("count", "<u4"),
+                ("feature_idx", "<i8"),
+                ("num_threshold", "<f8"),
+                ("missing_go_to_left", "u1"),
+                ("left", "<u4"),
+                ("right", "<u4"),
+                ("gain", "<f8"),
+                ("depth", "<u4"),
+                ("is_leaf", "u1"),
+                ("bin_threshold", "u1"),
+                ("is_categorical", "u1"),
+                ("bitset_idx", "<u4"),
+            ]
+        )
         nodes_list = [tuple(row) for row in data["nodes"]]
         nodes = np.array(nodes_list, dtype=node_dtype)
 
@@ -544,7 +581,7 @@ class SklearnSerializer(
             binned_left_cat_bitsets=binned_left_cat_bitsets,
             raw_left_cat_bitsets=raw_left_cat_bitsets,
         )
-    
+
     def _serialize_loss(self, value: BaseLoss) -> Dict[str, Any]:
         """
         Serialize a scikit-learn loss object using its constructor parameters.
@@ -604,15 +641,21 @@ class SklearnSerializer(
         return self._serialize_ndarray(value)
 
     def _deserialize_estimators_ndarray(self, value: List[Any]) -> np.ndarray:
-         # value is a list of lists of estimator dicts
+        # value is a list of lists of estimator dicts
         arr = []
         for row in value:
-            arr.append([
-                self.deserialize(est) if isinstance(est, dict) and "estimator_class" in est else est
-                for est in row
-            ])
+            arr.append(
+                [
+                    (
+                        self.deserialize(est)
+                        if isinstance(est, dict) and "estimator_class" in est
+                        else est
+                    )
+                    for est in row
+                ]
+            )
         return np.array(arr, dtype=object)
-    
+
     def _serialize_kernel(self, kernel: Kernel) -> dict:
         """
         Recursively serialize a sklearn.gaussian_process.kernels.Kernel object.
@@ -659,7 +702,8 @@ class SklearnSerializer(
                 if (
                     hasattr(registered, "_score_func")
                     and registered._score_func == scorer._score_func
-                    and getattr(registered, "_kwargs", {}) == getattr(scorer, "_kwargs", {})
+                    and getattr(registered, "_kwargs", {})
+                    == getattr(scorer, "_kwargs", {})
                 ):
                     score_func = name
                     break
@@ -676,6 +720,7 @@ class SklearnSerializer(
 
     def _deserialize_curve_scorer(self, data: dict) -> _CurveScorer:
         from sklearn.metrics import get_scorer
+
         score_func_name = data["score_func"]
         if score_func_name is not None:
             # Get the base scorer (e.g. accuracy, f1, etc.)
@@ -687,7 +732,9 @@ class SklearnSerializer(
                 thresholds=data.get("thresholds"),
             )
         else:
-            raise ValueError("Cannot deserialize custom/non-standard _CurveScorer functions.")
+            raise ValueError(
+                "Cannot deserialize custom/non-standard _CurveScorer functions."
+            )
 
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
@@ -723,8 +770,6 @@ class SklearnSerializer(
         # Extract and build estimator params and its types/dtypes map
         params = model.get_params(deep=False)
         param_types, param_dtypes = self._get_type_maps(params)
-        print("param_types=",param_types)
-        print("param_dtypes=",param_dtypes)
 
         # Build serializable estimator including extra info
         serialized_estimator = {
@@ -745,10 +790,8 @@ class SklearnSerializer(
         # Extract and build fitted attributes and its types/dtypes map
         attributes = self._extract_estimator_attributes(model)
         attribute_types, attribute_dtypes = self._get_type_maps(attributes)
-        print("attribute_types=",attribute_types)
-        print("attribute_dtypes=", attribute_dtypes)
         serializable_attributes = self.convert_to_serializable(attributes)
-        
+
         return {
             **serialized_estimator,
             "attributes": serializable_attributes,
@@ -836,7 +879,7 @@ class SklearnSerializer(
         for attribute, value in data["attributes"].items():
             attr_type = data["attribute_types"].get(attribute)
             attr_dtype = data.get("attribute_dtypes", {}).get(attribute) or None
-            
+
             # Handle tree_ separately
             if attr_type == "Tree":
                 model.tree_ = self._deserialize_tree(value)

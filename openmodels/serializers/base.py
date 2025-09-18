@@ -134,7 +134,7 @@ class NumpySerializerMixin(SerializerMixin):
         rs = np.random.RandomState()
         rs.set_state(tuple(value))
         return rs
-        
+
     # --- Handlers ---
     def _get_serializer_handlers(self):
         return super()._get_serializer_handlers() + [

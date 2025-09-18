@@ -91,7 +91,7 @@ def fit_model(
     """
     if not isinstance(model, FittableModel):
         raise TypeError("Model must have a 'fit' method")
-    
+
     # Special case for LabelBinarizer
     if isinstance(model, LabelBinarizer):
         model.fit(y)
@@ -314,6 +314,7 @@ def create_test_data(
     y = np.random.randint(0, 2, size=n_samples)
     return x, y
 
+
 def run_test_label_binarizer(
     model: LabelBinarizer,
     y: np.ndarray,
@@ -342,10 +343,13 @@ def run_test_label_binarizer(
         f.write(serialized_model)
     with open(model_file_path, "r", encoding="utf-8") as f:
         serialized_model_from_file = f.read()
-    deserialized_model_from_file = manager.deserialize(serialized_model_from_file, format_name="json")
+    deserialized_model_from_file = manager.deserialize(
+        serialized_model_from_file, format_name="json"
+    )
     transformed_from_file = deserialized_model_from_file.transform(y)
     testing.assert_array_equal(transformed, transformed_from_file)
     os.remove(model_file_path)
+
 
 def test_multilabelbinarizer_minimal():
     from sklearn.preprocessing import MultiLabelBinarizer
@@ -367,7 +371,7 @@ def test_multilabelbinarizer_minimal():
     np.testing.assert_array_equal(transformed, mlb2.transform(y_int))
 
     # String labels
-    y_str = [{'sci-fi', 'thriller'}, {'comedy'}]
+    y_str = [{"sci-fi", "thriller"}, {"comedy"}]
     mlb = MultiLabelBinarizer()
     transformed = mlb.fit_transform(y_str)
     classes = list(mlb.classes_)
