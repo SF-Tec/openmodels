@@ -130,6 +130,11 @@ class NumpySerializerMixin(SerializerMixin):
     def _serialize_generic(self, value: np.generic):
         return value.item()
 
+    def _deserialize_randomstate(self, value):
+        rs = np.random.RandomState()
+        rs.set_state(tuple(value))
+        return rs
+        
     # --- Handlers ---
     def _get_serializer_handlers(self):
         return super()._get_serializer_handlers() + [
@@ -152,7 +157,7 @@ class NumpySerializerMixin(SerializerMixin):
             ("int64", int),
             ("dtype", np.dtype),
             ("Float64DType", np.dtype),
-            ("RandomState", np.random.RandomState),
+            ("RandomState", self._deserialize_randomstate),
         ]
 
 

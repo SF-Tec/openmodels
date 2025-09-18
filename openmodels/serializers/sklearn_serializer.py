@@ -59,7 +59,7 @@ TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
-    "GradientBoostingRegressor",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
+    #"GradientBoostingRegressor",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
     # Classifiers:
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
@@ -140,6 +140,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "NuSVR": ["_sparse", "_gamma", "_n_support", "_probA", "_probB"],
     "TweedieRegressor": ["_base_loss"],
     "GaussianProcessRegressor": ["kernel_", "_y_train_std", "_y_train_mean"],
+    "GradientBoostingRegressor": ["_loss"],
     "HistGradientBoostingRegressor": [
         "_loss",
         "_preprocessor",
@@ -302,6 +303,10 @@ class SklearnSerializer(
         [1, [1, 2, [1, 2, 3]], 2] -> ['int',['int','int','ndarray'],'int']
 
         """
+        if isinstance(item, np.ndarray) and item.dtype == np.dtype("O") and item.size > 0:
+            first_elem = item.ravel()[0]
+            if isinstance(first_elem, BaseEstimator):
+                return "estimators_ndarray"
         if isinstance(item, List) and item:  # If it's a list and not empty
             return [self._get_nested_types(subitem) for subitem in item]
         elif isinstance(item, BaseEstimator):
@@ -374,15 +379,24 @@ class SklearnSerializer(
         estimator_handlers = [
             (est_name, self.deserialize) for est_name in ALL_ESTIMATORS.keys()
         ]
+
+        KERNEL = [
+            "RBF",
+            "WhiteKernel",
+            "Sum",
+            "Product",
+            "ConstantKernel",
+            "DotProduct",
+        ]
+
+        kernel_handlers = [
+            (kernel_name, self._deserialize_kernel) for kernel_name in KERNEL
+        ]
         return (
             [
-                ("RBF", self._deserialize_kernel),
-                ("WhiteKernel", self._deserialize_kernel),
-                ("Sum", self._deserialize_kernel),
-                ("Product", self._deserialize_kernel),
-                ("ConstantKernel", self._deserialize_kernel),
-                ("DotProduct", self._deserialize_kernel),
+                ("estimators_ndarray", self._deserialize_estimators_ndarray),
             ]
+            + kernel_handlers
             + loss_handlers
             + estimator_handlers
             + super()._get_deserializer_handlers()
@@ -497,6 +511,16 @@ class SklearnSerializer(
         # Regular array handling
         return self._serialize_ndarray(value)
 
+    def _deserialize_estimators_ndarray(self, value: List[Any]) -> np.ndarray:
+         # value is a list of lists of estimator dicts
+        arr = []
+        for row in value:
+            arr.append([
+                self.deserialize(est) if isinstance(est, dict) and "estimator_class" in est else est
+                for est in row
+            ])
+        return np.array(arr, dtype=object)
+    
     def _serialize_kernel(self, kernel: Kernel) -> dict:
         """
         Recursively serialize a sklearn.gaussian_process.kernels.Kernel object.
@@ -567,8 +591,8 @@ class SklearnSerializer(
         # Extract and build estimator params and its types/dtypes map
         params = model.get_params(deep=False)
         param_types, param_dtypes = self._get_type_maps(params)
-        # print("param_types=",param_types)
-        # print("param_dtypes=",param_dtypes)
+        print("param_types=",param_types)
+        print("param_dtypes=",param_dtypes)
 
         # Build serializable estimator including extra info
         serialized_estimator = {
@@ -589,11 +613,10 @@ class SklearnSerializer(
         # Extract and build fitted attributes and its types/dtypes map
         attributes = self._extract_estimator_attributes(model)
         attribute_types, attribute_dtypes = self._get_type_maps(attributes)
-        # print("attributes=",attributes)
-        # print("attribute_types=",attribute_types)
-        # print("attribute_dtypes=", attribute_dtypes)
+        print("attribute_types=",attribute_types)
+        print("attribute_dtypes=", attribute_dtypes)
         serializable_attributes = self.convert_to_serializable(attributes)
-        # print("serializable_attributes=",serializable_attributes)
+        print("serializable_attributes=",serializable_attributes)
 
         return {
             **serialized_estimator,
