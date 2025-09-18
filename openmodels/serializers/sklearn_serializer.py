@@ -80,9 +80,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
-    "PassiveAggressiveClassifier",  # Object of type Hinge is not JSON serializable
-    "Perceptron",  # Object of type Hinge is not JSON serializable
-    "SGDClassifier",  # Object of type Hinge is not JSON serializable
     "TunedThresholdClassifierCV",  # TypeError: Object of type _CurveScorer is not JSON serializable
     # Clusters:
     "Birch",  # Object of type _CFNode is not JSON serializable
@@ -118,7 +115,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "CountVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
-    "SGDOneClassSVM",  # Object of type Hinge is not JSON serializable
     "TfidfVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
 ]
 
@@ -137,7 +133,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_gamma",
     ],
     "KNeighborsRegressor": ["_fit_method", "_fit_X", "_y"],
-    "NuSVR": ["_sparse", "_gamma", "_n_support", "_probA", "_probB"],
+    "NuSVR": ["_sparse", "_gamma", "_n_support", "_probA", "_probB", "_dual_coef_", "_intercept_"],
     "TweedieRegressor": ["_base_loss"],
     "GaussianProcessRegressor": ["kernel_", "_y_train_std", "_y_train_mean"],
     "GradientBoostingRegressor": ["_loss"],
@@ -168,7 +164,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_bin_mapper",
     ],
     "MLPClassifier": ["_label_binarizer"],
-    "NuSVC": ["_sparse", "_n_support", "_probA", "_probB", "_gamma"],
+    "NuSVC": ["_sparse", "_n_support", "_probA", "_probB", "_gamma", "_dual_coef_", "_intercept_"],
     "KNeighborsClassifier": ["_fit_method", "_fit_X", "_y", "_tree"],
     "RadiusNeighborsClassifier": ["_fit_method", "_fit_X", "_y", "_tree"],
     "RidgeClassifier": ["_label_binarizer"],
@@ -211,7 +207,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_decision_path_lengths",
         "_average_path_length_per_tree",
     ],
-    "OneClassSVM": ["_sparse", "_n_support", "_probA", "_probB", "_gamma"],
+    "OneClassSVM": ["_sparse", "_n_support", "_probA", "_probB", "_gamma", "_dual_coef_", "_intercept_"],
     "NearestNeighbors": ["_fit_method", "_tree", "_fit_X"],
 }
 
@@ -344,6 +340,7 @@ class SklearnSerializer(
         def is_valid_attribute(key: str) -> bool:
             return (
                 not key.startswith("__")  # not private/internal
+                and not key.startswith("_")  # not protected
                 and key.endswith("_")  # sklearn convention
                 and not key.endswith("__")  # not dunder
                 and not isinstance(
