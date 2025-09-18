@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_classification
 from sklearn.feature_extraction import FeatureHasher
-from openmodels.test_helpers import run_test_model, run_test_label_binarizer
+from openmodels.test_helpers import run_test_model, run_test_label_binarizer, test_multilabelbinarizer_minimal
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
 from test.test_regression import REGRESSORS
 from test.test_classification import CLASSIFIERS
@@ -16,6 +16,8 @@ TRANSFORMERS = [
     and name not in [reg.__name__ for reg in REGRESSORS]
     and name not in [clf.__name__ for clf in CLASSIFIERS]
 ]
+
+
 
 @pytest.fixture(scope="module")
 def data():
@@ -113,6 +115,9 @@ def test_transformer(Transformer, data):
         args["dictionary"] = dictionary
 
     transformer = Transformer(**args)
+    if Transformer.__name__ == "MultiLabelBinarizer":
+        test_multilabelbinarizer_minimal()
+        return
     if Transformer.__name__ == "LabelBinarizer":
         # Ensure y is a 1D array of discrete labels
         _, y_int = np.unique(y, return_inverse=True)

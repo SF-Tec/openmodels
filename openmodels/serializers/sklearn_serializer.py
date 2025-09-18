@@ -104,9 +104,8 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "KNeighborsTransformer",  # ValueError:
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
     # an inhomogeneous shape after 1 dimensions. The detected shape was (5,) + inhomogeneous part.
-    #"LabelBinarizer",  # LabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "LabelEncoder",  # LabelEncoder.fit() takes 2 positional arguments but 3 were given
-    "MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
+    #"MultiLabelBinarizer",  # MultiLabelBinarizer.fit() takes 2 positional arguments but 3 were given
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "OneHotEncoder",  # ValueError:
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
@@ -209,6 +208,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "SimpleImputer": ["_fit_dtype"],
     "MiniBatchNMF": ["_n_components", "_transform_max_iter", "_beta_loss", "_gamma"],
     "MissingIndicator": ["_n_features", "_precomputed"],
+    "MultiLabelBinarizer": ["_cached_dict"],
     "PolynomialFeatures": ["_max_degree", "_n_out_full", "_min_degree"],
     "PLSSVD": ["_x_mean", "_x_std"],
     # Others:

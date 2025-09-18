@@ -346,3 +346,34 @@ def run_test_label_binarizer(
     transformed_from_file = deserialized_model_from_file.transform(y)
     testing.assert_array_equal(transformed, transformed_from_file)
     os.remove(model_file_path)
+
+def test_multilabelbinarizer_minimal():
+    from sklearn.preprocessing import MultiLabelBinarizer
+    from openmodels.serializers.sklearn_serializer import SklearnSerializer
+    from openmodels import SerializationManager
+    import numpy as np
+
+    # Integer labels
+    y_int = [(1, 2), (3,)]
+    mlb = MultiLabelBinarizer()
+    transformed = mlb.fit_transform(y_int)
+    classes = mlb.classes_.copy()
+
+    manager = SerializationManager(SklearnSerializer())
+    serialized = manager.serialize(mlb)
+    mlb2 = manager.deserialize(serialized)
+
+    np.testing.assert_array_equal(classes, mlb2.classes_)
+    np.testing.assert_array_equal(transformed, mlb2.transform(y_int))
+
+    # String labels
+    y_str = [{'sci-fi', 'thriller'}, {'comedy'}]
+    mlb = MultiLabelBinarizer()
+    transformed = mlb.fit_transform(y_str)
+    classes = list(mlb.classes_)
+
+    serialized = manager.serialize(mlb)
+    mlb2 = manager.deserialize(serialized)
+
+    assert list(mlb2.classes_) == classes
+    np.testing.assert_array_equal(transformed, mlb2.transform(y_str))
