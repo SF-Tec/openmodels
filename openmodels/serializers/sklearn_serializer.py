@@ -27,6 +27,8 @@ from sklearn._loss.loss import (
     PinballLoss,
     BaseLoss,
 )
+from sklearn.metrics._scorer import _CurveScorer
+from sklearn.metrics import get_scorer_names, get_scorer
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
@@ -81,7 +83,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     #"GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
-    "TunedThresholdClassifierCV",  # TypeError: Object of type _CurveScorer is not JSON serializable
     # Clusters:
     "Birch",  # Object of type _CFNode is not JSON serializable
     "BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
@@ -372,6 +373,7 @@ class SklearnSerializer(
             (TreePredictor, self._serialize_tree_predictor),
             (_CalibratedClassifier, self._serialize_calibrated_classifier),
             (np.ndarray, self._serialize_estimators_ndarray),
+            (_CurveScorer, self._serialize_curve_scorer),
         ] + super()._get_serializer_handlers()
 
     def _get_deserializer_handlers(self):
@@ -393,6 +395,7 @@ class SklearnSerializer(
                 ("estimators_ndarray", self._deserialize_estimators_ndarray),
                 ("TreePredictor", self._deserialize_tree_predictor),
                 ("_CalibratedClassifier", self._deserialize_calibrated_classifier),
+                ("_CurveScorer", self._deserialize_curve_scorer),
             ]
             + kernel_handlers
             + loss_handlers
@@ -619,6 +622,46 @@ class SklearnSerializer(
             else:
                 deserialized_params[k] = v
         return kernel_cls(**deserialized_params)
+
+    def _serialize_curve_scorer(self, scorer: _CurveScorer) -> dict:
+        # Find the scorer name in sklearn.metrics.get_scorer_names()
+        score_func = None
+        for name in get_scorer_names():
+            try:
+                registered = get_scorer(name)
+                # Compare function and kwargs
+                if (
+                    hasattr(registered, "_score_func")
+                    and registered._score_func == scorer._score_func
+                    and getattr(registered, "_kwargs", {}) == getattr(scorer, "_kwargs", {})
+                ):
+                    score_func = name
+                    break
+            except Exception:
+                continue
+
+        return {
+            "score_func": score_func,
+            "sign": scorer._sign,
+            "kwargs": scorer._kwargs,
+            "thresholds": scorer._thresholds,
+            "response_method": scorer._response_method,
+        }
+
+    def _deserialize_curve_scorer(self, data: dict) -> _CurveScorer:
+        from sklearn.metrics import get_scorer
+        score_func_name = data["score_func"]
+        if score_func_name is not None:
+            # Get the base scorer (e.g. accuracy, f1, etc.)
+            base_scorer = get_scorer(score_func_name)
+            # Use from_scorer to reconstruct the _CurveScorer
+            return _CurveScorer.from_scorer(
+                base_scorer,
+                response_method=data.get("response_method", "predict"),
+                thresholds=data.get("thresholds"),
+            )
+        else:
+            raise ValueError("Cannot deserialize custom/non-standard _CurveScorer functions.")
 
     def serialize(self, model: BaseEstimator) -> Dict[str, Any]:
         """
