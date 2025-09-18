@@ -14,6 +14,7 @@ from sklearn.calibration import _CalibratedClassifier, _SigmoidCalibration
 from sklearn.ensemble._hist_gradient_boosting.predictor import TreePredictor
 from sklearn.ensemble._hist_gradient_boosting.binning import _BinMapper
 from sklearn.gaussian_process.kernels import Kernel
+from sklearn.gaussian_process._gpc import _BinaryGaussianProcessClassifierLaplace
 from sklearn._loss.loss import (
     AbsoluteError,
     HalfBinomialLoss,
@@ -69,6 +70,7 @@ ALL_ESTIMATORS = {
 # add _BinMapper to ALL_ESTIMATORS
 ALL_ESTIMATORS["_BinMapper"] = _BinMapper
 ALL_ESTIMATORS["_SigmoidCalibration"] = _SigmoidCalibration
+ALL_ESTIMATORS["_BinaryGaussianProcessClassifierLaplace"] = _BinaryGaussianProcessClassifierLaplace
 
 TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
@@ -76,7 +78,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors: all regressors work!! Hurray!
     # Exceptions encountered during testing:
     # Classifiers:
-    "GaussianProcessClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
+    #"GaussianProcessClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
@@ -156,6 +158,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "KMeans": ["_n_threads"],
     "MiniBatchKMeans": ["_n_threads"],
     # Classifiers:
+    "_BinaryGaussianProcessClassifierLaplace": ["kernel_"],
     "DummyClassifier": ["_strategy"],
     "HistGradientBoostingClassifier": [
         "_preprocessor",
