@@ -10,6 +10,7 @@ import numpy as np
 import inspect
 
 import sklearn
+from sklearn.calibration import _CalibratedClassifier, _SigmoidCalibration
 from sklearn.ensemble._hist_gradient_boosting.predictor import TreePredictor
 from sklearn.ensemble._hist_gradient_boosting.binning import _BinMapper
 from sklearn.gaussian_process.kernels import Kernel
@@ -67,17 +68,16 @@ ALL_ESTIMATORS = {
 }
 # add _BinMapper to ALL_ESTIMATORS
 ALL_ESTIMATORS["_BinMapper"] = _BinMapper
+ALL_ESTIMATORS["_SigmoidCalibration"] = _SigmoidCalibration
 
 TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
-    # Regressors:
-    #"HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
+    # Regressors: all regressors work!! Hurray!
+    # Exceptions encountered during testing:
     # Classifiers:
-    "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
     "GaussianProcessClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneVsRestClassifier
     "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
-    #"HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
     "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OneVsRestClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
@@ -381,6 +381,7 @@ class SklearnSerializer(
             (Kernel, self._serialize_kernel),
             (Tree, self._serialize_tree),
             (TreePredictor, self._serialize_tree_predictor),
+            (_CalibratedClassifier, self._serialize_calibrated_classifier),
             (np.ndarray, self._serialize_estimators_ndarray),
         ] + super()._get_serializer_handlers()
 
@@ -402,6 +403,7 @@ class SklearnSerializer(
             [
                 ("estimators_ndarray", self._deserialize_estimators_ndarray),
                 ("TreePredictor", self._deserialize_tree_predictor),
+                ("_CalibratedClassifier", self._deserialize_calibrated_classifier),
             ]
             + kernel_handlers
             + loss_handlers
@@ -410,6 +412,16 @@ class SklearnSerializer(
         )
 
     # --- Sklearn specific serializers/deserializers ---
+    def _serialize_calibrated_classifier(self, obj: "_CalibratedClassifier") -> dict:
+        # Serialize estimator, calibrators (list), classes, and method
+        return {
+            "estimator": self.convert_to_serializable(obj.estimator),
+            "calibrators": self.convert_to_serializable(obj.calibrators),
+            "classes": self.convert_to_serializable(obj.classes),
+            "method": obj.method,
+        }
+    
+
     def _serialize_tree(self, tree: Tree) -> Dict[str, Any]:
         """
         Serializes a sklearn.tree._tree.Tree object to a dictionary.
@@ -432,6 +444,13 @@ class SklearnSerializer(
             "nodes_dtype": [list(t) for t in state["nodes"].dtype.descr],  # for JSON
         }
 
+    def _deserialize_calibrated_classifier(self, data: dict) -> "_CalibratedClassifier":
+        estimator = self.deserialize(data["estimator"])
+        calibrators = [self.deserialize(c) for c in data["calibrators"]]
+        classes = np.array(data["classes"])
+        method = data["method"]
+        return _CalibratedClassifier(estimator, calibrators, classes=classes, method=method)
+    
     def _deserialize_tree(self, tree_data: Dict[str, Any]) -> Tree:
         """
         Deserializes a dictionary representation of a tree back to a sklearn.tree._tree.Tree object.
