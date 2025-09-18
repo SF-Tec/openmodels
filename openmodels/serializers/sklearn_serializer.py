@@ -10,6 +10,8 @@ import numpy as np
 import inspect
 
 import sklearn
+from sklearn.ensemble._hist_gradient_boosting.predictor import TreePredictor
+from sklearn.ensemble._hist_gradient_boosting.binning import _BinMapper
 from sklearn.gaussian_process.kernels import Kernel
 from sklearn._loss.loss import (
     AbsoluteError,
@@ -51,21 +53,31 @@ LOSS_CLASS_REGISTRY = {
     "PinballLoss": PinballLoss,
 }
 
+KERNEL_REGISTRY = [
+    "RBF",
+    "WhiteKernel",
+    "Sum",
+    "Product",
+    "ConstantKernel",
+    "DotProduct",
+]
+
 ALL_ESTIMATORS = {
     name: cls for name, cls in all_estimators() if issubclass(cls, BaseEstimator)
 }
+# add _BinMapper to ALL_ESTIMATORS
+ALL_ESTIMATORS["_BinMapper"] = _BinMapper
 
 TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors:
-    #"GradientBoostingRegressor",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
-    "HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
+    #"HistGradientBoostingRegressor",  # TypeError: Object of type TreePredictor is not JSON serializable
     # Classifiers:
     "CalibratedClassifierCV",  # Object of type _CalibratedClassifier is not JSON serializable
     "GaussianProcessClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneVsRestClassifier
     "GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
-    "HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
+    #"HistGradientBoostingClassifier",  # Object of type TreePredictor is not JSON serializable
     "MLPClassifier",  # Object of type LabelBinarizer is not JSON serializable
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OneVsRestClassifier",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: LabelBinarizer
@@ -146,6 +158,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_preprocessor",
         "_baseline_prediction",
         "_predictors",
+        "_bin_mapper",
     ],
     "RadiusNeighborsRegressor": ["_fit_method", "_fit_X", "_y"],
     "CCA": ["_x_mean", "_predict_1d"],
@@ -164,6 +177,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_preprocessor",
         "_baseline_prediction",
         "_predictors",
+        "_bin_mapper",
     ],
     "MLPClassifier": ["_label_binarizer"],
     "NuSVC": ["_sparse", "_n_support", "_probA", "_probB", "_gamma"],
@@ -366,6 +380,7 @@ class SklearnSerializer(
             (KDTree, self._serialize_kdtree),
             (Kernel, self._serialize_kernel),
             (Tree, self._serialize_tree),
+            (TreePredictor, self._serialize_tree_predictor),
             (np.ndarray, self._serialize_estimators_ndarray),
         ] + super()._get_serializer_handlers()
 
@@ -380,21 +395,13 @@ class SklearnSerializer(
             (est_name, self.deserialize) for est_name in ALL_ESTIMATORS.keys()
         ]
 
-        KERNEL = [
-            "RBF",
-            "WhiteKernel",
-            "Sum",
-            "Product",
-            "ConstantKernel",
-            "DotProduct",
-        ]
-
         kernel_handlers = [
-            (kernel_name, self._deserialize_kernel) for kernel_name in KERNEL
+            (kernel_name, self._deserialize_kernel) for kernel_name in KERNEL_REGISTRY
         ]
         return (
             [
                 ("estimators_ndarray", self._deserialize_estimators_ndarray),
+                ("TreePredictor", self._deserialize_tree_predictor),
             ]
             + kernel_handlers
             + loss_handlers
@@ -453,6 +460,54 @@ class SklearnSerializer(
         tree.__setstate__(state)
         return tree
 
+    def _serialize_tree_predictor(self, predictor: TreePredictor) -> dict:
+        """
+        Serialize a sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor object.
+        """
+        return {
+            "nodes": self.convert_to_serializable(predictor.nodes),
+            "binned_left_cat_bitsets": self.convert_to_serializable(predictor.binned_left_cat_bitsets),
+            "raw_left_cat_bitsets": self.convert_to_serializable(predictor.raw_left_cat_bitsets),
+        }
+    
+    def _deserialize_tree_predictor(self, data: dict) -> TreePredictor:
+        node_dtype = np.dtype([
+            ('value', '<f8'),
+            ('count', '<u4'),
+            ('feature_idx', '<i8'),
+            ('num_threshold', '<f8'),
+            ('missing_go_to_left', 'u1'),
+            ('left', '<u4'),
+            ('right', '<u4'),
+            ('gain', '<f8'),
+            ('depth', '<u4'),
+            ('is_leaf', 'u1'),
+            ('bin_threshold', 'u1'),
+            ('is_categorical', 'u1'),
+            ('bitset_idx', '<u4')
+        ])
+        nodes_list = [tuple(row) for row in data["nodes"]]
+        nodes = np.array(nodes_list, dtype=node_dtype)
+
+        def ensure_2d_uint32(arr):
+            arr = np.array(arr, dtype="uint32")
+            if arr.ndim == 1:
+                # If empty, shape should be (0, 8)
+                if arr.size == 0:
+                    arr = arr.reshape((0, 8))
+                else:
+                    arr = arr.reshape((-1, 8))
+            return arr
+
+        binned_left_cat_bitsets = ensure_2d_uint32(data["binned_left_cat_bitsets"])
+        raw_left_cat_bitsets = ensure_2d_uint32(data["raw_left_cat_bitsets"])
+
+        return TreePredictor(
+            nodes=nodes,
+            binned_left_cat_bitsets=binned_left_cat_bitsets,
+            raw_left_cat_bitsets=raw_left_cat_bitsets,
+        )
+    
     def _serialize_loss(self, value: BaseLoss) -> Dict[str, Any]:
         """
         Serialize a scikit-learn loss object using its constructor parameters.
@@ -616,8 +671,7 @@ class SklearnSerializer(
         print("attribute_types=",attribute_types)
         print("attribute_dtypes=", attribute_dtypes)
         serializable_attributes = self.convert_to_serializable(attributes)
-        print("serializable_attributes=",serializable_attributes)
-
+        
         return {
             **serialized_estimator,
             "attributes": serializable_attributes,
