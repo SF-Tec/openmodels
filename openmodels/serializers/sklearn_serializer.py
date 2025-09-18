@@ -11,6 +11,7 @@ import inspect
 
 import sklearn
 from sklearn.calibration import _CalibratedClassifier, _SigmoidCalibration
+from sklearn.cluster._birch import _CFNode
 from sklearn.ensemble._hist_gradient_boosting.predictor import TreePredictor
 from sklearn.ensemble._hist_gradient_boosting.binning import _BinMapper
 from sklearn.gaussian_process.kernels import Kernel
@@ -80,11 +81,10 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors: all regressors work!! Hurray!
     # Exceptions encountered during testing:
     # Classifiers:
-    #"GradientBoostingClassifier",  # AttributeError: 'dict' object has no attribute '_validate_X_predict'
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     # Clusters:
-    "Birch",  # Object of type _CFNode is not JSON serializable
+    #"Birch",  # Object of type _CFNode is not JSON serializable
     "BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
     "FeatureAgglomeration",  # Object of type _ArrayFunctionDispatcher is not JSON serializable
     "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8')...]" not understood
@@ -155,6 +155,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "TransformedTargetRegressor": ["_training_dim"],
     # Clusters:
     "BisectingKMeans": ["_bisecting_tree"],
+    "Birch": ["_subcluster_norms"],
     "KMeans": ["_n_threads"],
     "MiniBatchKMeans": ["_n_threads"],
     # Classifiers:
@@ -374,6 +375,7 @@ class SklearnSerializer(
             (_CalibratedClassifier, self._serialize_calibrated_classifier),
             (np.ndarray, self._serialize_estimators_ndarray),
             (_CurveScorer, self._serialize_curve_scorer),
+            (_CFNode, self._serialize_cfnode),
         ] + super()._get_serializer_handlers()
 
     def _get_deserializer_handlers(self):
@@ -396,6 +398,7 @@ class SklearnSerializer(
                 ("TreePredictor", self._deserialize_tree_predictor),
                 ("_CalibratedClassifier", self._deserialize_calibrated_classifier),
                 ("_CurveScorer", self._deserialize_curve_scorer),
+                ("_CFNode", self._deserialize_cfnode),
             ]
             + kernel_handlers
             + loss_handlers
@@ -413,6 +416,36 @@ class SklearnSerializer(
             "method": obj.method,
         }
     
+    def _deserialize_calibrated_classifier(self, data: dict) -> "_CalibratedClassifier":
+        estimator = self.deserialize(data["estimator"])
+        calibrators = [self.deserialize(c) for c in data["calibrators"]]
+        classes = np.array(data["classes"])
+        method = data["method"]
+        return _CalibratedClassifier(estimator, calibrators, classes=classes, method=method)
+
+    def _serialize_cfnode(self, node):
+        """Recursively serialize a _CFNode."""
+        if node is None:
+            return None
+        return {
+            "threshold": node.threshold,
+            "branching_factor": node.branching_factor,
+            "is_leaf": node.is_leaf,
+            "n_features": node.n_features,
+            #dtype=X.dtype,
+        }
+
+    def _deserialize_cfnode(self, data):
+        if data is None:
+            return None
+        node = _CFNode(
+            threshold=data["threshold"],
+            branching_factor=data["branching_factor"],
+            is_leaf=data["is_leaf"],
+            n_features=data["n_features"],
+            dtype=np.float64  # or use dtype from centroids if needed
+        )
+        return node
 
     def _serialize_tree(self, tree: Tree) -> Dict[str, Any]:
         """
@@ -436,13 +469,6 @@ class SklearnSerializer(
             "nodes_dtype": [list(t) for t in state["nodes"].dtype.descr],  # for JSON
         }
 
-    def _deserialize_calibrated_classifier(self, data: dict) -> "_CalibratedClassifier":
-        estimator = self.deserialize(data["estimator"])
-        calibrators = [self.deserialize(c) for c in data["calibrators"]]
-        classes = np.array(data["classes"])
-        method = data["method"]
-        return _CalibratedClassifier(estimator, calibrators, classes=classes, method=method)
-    
     def _deserialize_tree(self, tree_data: Dict[str, Any]) -> Tree:
         """
         Deserializes a dictionary representation of a tree back to a sklearn.tree._tree.Tree object.
@@ -810,6 +836,7 @@ class SklearnSerializer(
         for attribute, value in data["attributes"].items():
             attr_type = data["attribute_types"].get(attribute)
             attr_dtype = data.get("attribute_dtypes", {}).get(attribute) or None
+            
             # Handle tree_ separately
             if attr_type == "Tree":
                 model.tree_ = self._deserialize_tree(value)
