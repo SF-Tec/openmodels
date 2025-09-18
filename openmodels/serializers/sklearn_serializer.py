@@ -436,7 +436,9 @@ class SklearnSerializer(
         )
 
     # --- Sklearn specific serializers/deserializers ---
-    def _serialize_calibrated_classifier(self, obj: "_CalibratedClassifier") -> dict:
+    def _serialize_calibrated_classifier(
+        self, obj: _CalibratedClassifier
+    ) -> Dict[str, Any]:
         # Serialize estimator, calibrators (list), classes, and method
         return {
             "estimator": self.convert_to_serializable(obj.estimator),
@@ -445,7 +447,9 @@ class SklearnSerializer(
             "method": obj.method,
         }
 
-    def _deserialize_calibrated_classifier(self, data: dict) -> "_CalibratedClassifier":
+    def _deserialize_calibrated_classifier(
+        self, data: Dict[str, Any]
+    ) -> _CalibratedClassifier:
         estimator = self.deserialize(data["estimator"])
         calibrators = [self.deserialize(c) for c in data["calibrators"]]
         classes = np.array(data["classes"])
@@ -454,10 +458,8 @@ class SklearnSerializer(
             estimator, calibrators, classes=classes, method=method
         )
 
-    def _serialize_cfnode(self, node):
+    def _serialize_cfnode(self, node: _CFNode) -> Dict[str, Any]:
         """Recursively serialize a _CFNode."""
-        if node is None:
-            return None
         return {
             "threshold": node.threshold,
             "branching_factor": node.branching_factor,
@@ -466,7 +468,7 @@ class SklearnSerializer(
             # dtype=X.dtype,
         }
 
-    def _deserialize_cfnode(self, data):
+    def _deserialize_cfnode(self, data: dict) -> _CFNode:
         if data is None:
             return None
         node = _CFNode(
@@ -528,7 +530,7 @@ class SklearnSerializer(
         tree.__setstate__(state)
         return tree
 
-    def _serialize_tree_predictor(self, predictor: TreePredictor) -> dict:
+    def _serialize_tree_predictor(self, predictor: TreePredictor) -> Dict[str, Any]:
         """
         Serialize a sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor object.
         """
@@ -542,7 +544,7 @@ class SklearnSerializer(
             ),
         }
 
-    def _deserialize_tree_predictor(self, data: dict) -> TreePredictor:
+    def _deserialize_tree_predictor(self, data: Dict[str, Any]) -> TreePredictor:
         node_dtype = np.dtype(
             [
                 ("value", "<f8"),
@@ -656,7 +658,7 @@ class SklearnSerializer(
             )
         return np.array(arr, dtype=object)
 
-    def _serialize_kernel(self, kernel: Kernel) -> dict:
+    def _serialize_kernel(self, kernel: Kernel) -> Dict[str, Any]:
         """
         Recursively serialize a sklearn.gaussian_process.kernels.Kernel object.
         """
@@ -674,7 +676,7 @@ class SklearnSerializer(
             "params": serialized_params,
         }
 
-    def _deserialize_kernel(self, data: dict) -> Kernel:
+    def _deserialize_kernel(self, data: Dict[str, Any]) -> Kernel:
         """
         Recursively deserialize a kernel dict back to a Kernel object.
         """
@@ -692,7 +694,7 @@ class SklearnSerializer(
                 deserialized_params[k] = v
         return kernel_cls(**deserialized_params)
 
-    def _serialize_curve_scorer(self, scorer: _CurveScorer) -> dict:
+    def _serialize_curve_scorer(self, scorer: _CurveScorer) -> Dict[str, Any]:
         # Find the scorer name in sklearn.metrics.get_scorer_names()
         score_func = None
         for name in get_scorer_names():
@@ -718,7 +720,7 @@ class SklearnSerializer(
             "response_method": scorer._response_method,
         }
 
-    def _deserialize_curve_scorer(self, data: dict) -> _CurveScorer:
+    def _deserialize_curve_scorer(self, data: Dict[str, Any]) -> _CurveScorer:
         from sklearn.metrics import get_scorer
 
         score_func_name = data["score_func"]
