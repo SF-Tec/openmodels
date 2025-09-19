@@ -14,6 +14,15 @@ from scipy.sparse import csr_matrix  # type: ignore
 from openmodels import SerializationManager, SklearnSerializer
 
 
+def assert_sparse_matrix_equal(a, b):
+    """Assert that two sparse matrices are equal in shape and values (as float64)."""
+    assert type(a) is type(b)
+    assert a.shape == b.shape
+    np.testing.assert_allclose(
+        a.toarray().astype(np.float64), b.toarray().astype(np.float64)
+    )
+
+
 @runtime_checkable
 class PredictorModel(Protocol):
     def predict(self, X: Union[np.ndarray, csr_matrix]) -> np.ndarray: ...
@@ -162,7 +171,12 @@ def run_test_predictions(
         else:
             actual_predictions = model1.transform(x)
             expected_predictions = model2.transform(x)
-        testing.assert_array_almost_equal(actual_predictions, expected_predictions)
+        if isinstance(actual_predictions, csr_matrix) and isinstance(
+            expected_predictions, csr_matrix
+        ):
+            assert_sparse_matrix_equal(actual_predictions, expected_predictions)
+        else:
+            testing.assert_array_almost_equal(actual_predictions, expected_predictions)
 
 
 def run_test_transformed_data(
@@ -187,9 +201,14 @@ def run_test_transformed_data(
     """
     expected_transformed_data = model1.transform(x)
     actual_transformed_data = model2.transform(x)
-    testing.assert_array_almost_equal(
-        expected_transformed_data, actual_transformed_data
-    )
+    if isinstance(expected_transformed_data, csr_matrix) and isinstance(
+        actual_transformed_data, csr_matrix
+    ):
+        assert_sparse_matrix_equal(expected_transformed_data, actual_transformed_data)
+    else:
+        testing.assert_array_almost_equal(
+            expected_transformed_data, actual_transformed_data
+        )
 
 
 def run_test_model(
