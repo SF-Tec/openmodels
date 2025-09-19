@@ -760,12 +760,9 @@ class SklearnSerializer(
         >>> serializer = SklearnSerializer()
         >>> serialized_dict = serializer.serialize(model)
         """
-        print("Serializing model of type:", model.__class__.__name__)
         # Extract and build estimator params and its types/dtypes map
         params = model.get_params(deep=False)
         param_types, param_dtypes = self._get_type_maps(params)
-        print("param_types:", param_types)
-        print("param_dtypes:", param_dtypes)
 
         # Build serializable estimator including extra info
         serialized_estimator = {
@@ -787,8 +784,6 @@ class SklearnSerializer(
         attributes = self._extract_estimator_attributes(model)
         attribute_types, attribute_dtypes = self._get_type_maps(attributes)
 
-        print("attribute_types:", attribute_types)
-        print("attribute_dtypes:", attribute_dtypes)
         serializable_attributes = self.convert_to_serializable(attributes)
 
         return {
