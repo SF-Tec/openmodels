@@ -50,6 +50,17 @@ def test_others(Others, data):
     x, y = data
 
     args = {}
+    # Special handling for text vectorizers
+    if Others.__name__ in ["CountVectorizer", "TfidfVectorizer"]:
+        # Provide a list of strings as input data
+        x = [
+            "this is a test document",
+            "another test document",
+            "text data for vectorizer",
+            "machine learning is fun",
+            "openmodels serialization test"
+        ]
+        y = None  # y is not used for vectorizers
     if Others.__name__ == "FrozenEstimator":
         from sklearn.linear_model import LogisticRegression
         base_estimator = LogisticRegression()

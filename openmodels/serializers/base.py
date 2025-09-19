@@ -170,12 +170,14 @@ class ScipySerializerMixin(SerializerMixin):
             "indptr": self.convert_to_serializable(csr_value.indptr.astype(np.int32)),
             "indices": self.convert_to_serializable(csr_value.indices.astype(np.int32)),
             "shape": self.convert_to_serializable(csr_value.shape),
+            "dtype": str(csr_value.data.dtype),
         }
 
     def _deserialize_csr_matrix(self, value, value_dtype=None):
+        dtype = value.get("dtype", None) or value_dtype or np.float64
         return csr_matrix(
             (
-                np.array(value["data"], dtype=value_dtype or np.float64),
+                np.array(value["data"], dtype=dtype),
                 np.array(value["indices"], dtype=np.int32),
                 np.array(value["indptr"], dtype=np.int32),
             ),

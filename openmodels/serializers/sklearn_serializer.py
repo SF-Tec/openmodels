@@ -91,19 +91,13 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8')...]" not understood
     # Transformers:
     "ColumnTransformer",  # AttributeError: 'dict' object has no attribute 'transform'
-    "DictVectorizer",  # ValueError:
     "FeatureHasher",  # TypeError: 'NoneType' object is not iterable
     "FeatureUnion",  # AttributeError: 'dict' object has no attribute 'transform'
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
-    "HashingVectorizer",  # openmodels.exceptions.SerializationError: Cannot serialize an unfitted model
-    "KBinsDiscretizer",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
-    "KNeighborsTransformer",  # ValueError:
+    "HashingVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
-    "OneHotEncoder",  # ValueError:
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    "RadiusNeighborsTransformer",  # ValueError:
-    "RandomTreesEmbedding",  # openmodels.exceptions.UnsupportedEstimatorError: Unsupported estimator class: OneHotEncoder
     "SelectFdr",  # Object of type function is not JSON serializable
     "SelectFpr",  # Object of type function is not JSON serializable
     "SelectFwe",  # Object of type function is not JSON serializable
@@ -113,12 +107,8 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
-    "TfidfTransformer",  # ValueError
-    # Others:
-    "CountVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
-    "TfidfVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
 ]
 
 
@@ -239,6 +229,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
         "_intercept_",
     ],
     "NearestNeighbors": ["_fit_method", "_tree", "_fit_X"],
+    "TfidfVectorizer": ["_tfidf"],
 }
 
 
@@ -792,6 +783,7 @@ class SklearnSerializer(
         # Extract and build fitted attributes and its types/dtypes map
         attributes = self._extract_estimator_attributes(model)
         attribute_types, attribute_dtypes = self._get_type_maps(attributes)
+
         serializable_attributes = self.convert_to_serializable(attributes)
 
         return {
