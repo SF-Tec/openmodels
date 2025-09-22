@@ -97,14 +97,14 @@ class SerializerMixin:
         """Deserialize a Python function from its module and name."""
         module = __import__(data["module"], fromlist=[data["name"]])
         return getattr(module, data["name"])
-    
+
     # --- Handlers ---
     def _get_serializer_handlers(self):
         """Each mixin extends this list."""
         return [
             (slice, self._serialize_slice),
             (type, self._serialize_type),
-            (Callable, self._serialize_function)
+            (Callable, self._serialize_function),
         ]
 
     def _get_deserializer_handlers(self):
@@ -144,7 +144,7 @@ class NumpySerializerMixin(SerializerMixin):
         "min": np.min,
         "sum": np.sum,
     }
-    
+
     # --- NumPy specific serializers/deserializers ---
     def _serialize_ndarray(self, value: np.ndarray):
         return self.convert_to_serializable(value.tolist())
@@ -156,7 +156,7 @@ class NumpySerializerMixin(SerializerMixin):
         rs = np.random.RandomState()
         rs.set_state(tuple(value))
         return rs
-    
+
     def _serialize_numpy_function(self, value):
         # Only handle known numpy functions
         for name, func in self._POOLING_FUNC_REGISTRY.items():
@@ -263,7 +263,7 @@ class ScipySerializerMixin(SerializerMixin):
         return {
             "t": spline.t.tolist(),  # Knots
             "c": spline.c.tolist(),  # Coefficients
-            "k": spline.k,           # Degree
+            "k": spline.k,  # Degree
             "extrapolate": spline.extrapolate,
         }
 
@@ -277,7 +277,7 @@ class ScipySerializerMixin(SerializerMixin):
             k=data["k"],
             extrapolate=data["extrapolate"],
         )
-    
+
     # --- Handlers ---
     def _get_serializer_handlers(self):
         return [

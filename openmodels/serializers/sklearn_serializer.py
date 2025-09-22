@@ -37,7 +37,6 @@ from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.discovery import all_estimators
 from sklearn.neighbors import KDTree
-from tomlkit import value
 
 from openmodels.exceptions import UnsupportedEstimatorError
 from openmodels.protocols import ModelSerializer
@@ -315,7 +314,7 @@ class SklearnSerializer(
             and isinstance(item.ravel()[0], BaseEstimator)
         ):
             return "estimators_collection"
-        
+
         # Handle lists or tuple of estimators
         if (
             isinstance(item, (list, tuple))
@@ -331,7 +330,7 @@ class SklearnSerializer(
         # Handle lists
         if isinstance(item, list):
             return [self._get_nested_types(subitem) for subitem in item]
-        
+
         elif isinstance(item, BaseEstimator):
             # For estimators, return their class name instead of just 'BaseEstimator'
             return item.__class__.__name__
@@ -358,7 +357,6 @@ class SklearnSerializer(
         for key, value in values_dict.items():
             if isinstance(value, tuple):
                 dtypes_map.pop(key, None)  # Remove tuples from dtypes_map
-        
 
         return types_map, dtypes_map
 
@@ -446,7 +444,7 @@ class SklearnSerializer(
 
     def _deserialize_bisecting_tree(self, data: dict) -> _BisectingTree:
         if data is None:
-           return None
+            return None
         node = _BisectingTree(
             center=self.convert_from_serializable(data["center"]),
             indices=self.convert_from_serializable(data["indices"]),
@@ -652,35 +650,57 @@ class SklearnSerializer(
         # Create KDTree with data - the tree will be rebuilt automatically
         return KDTree(data)
 
-    def _serialize_estimators_collection(self, value: Union[np.ndarray, List[BaseEstimator]]) -> List[Any]:
+    def _serialize_estimators_collection(
+        self, value: Union[np.ndarray, List[BaseEstimator]]
+    ) -> List[Any]:
         # Accept both numpy arrays and lists of estimators
         if isinstance(value, np.ndarray):
-            if value.dtype == np.dtype("O") and value.size > 0 and isinstance(value.ravel()[0], BaseEstimator):
+            if (
+                value.dtype == np.dtype("O")
+                and value.size > 0
+                and isinstance(value.ravel()[0], BaseEstimator)
+            ):
                 return [
                     [self.convert_to_serializable(est) for est in row] for row in value
                 ]
             return self._serialize_ndarray(value)
 
-        if isinstance(value, (list, tuple)) and value and isinstance(value[0], BaseEstimator):
+        if (
+            isinstance(value, (list, tuple))
+            and value
+            and isinstance(value[0], BaseEstimator)
+        ):
             return [self.convert_to_serializable(est) for est in value]
         return value
 
-    def _deserialize_estimators_collection(self, value: List[Any]) -> Union[np.ndarray, List[BaseEstimator]]:
-         # Handle list of lists (array) or flat list (meta-estimator)
+    def _deserialize_estimators_collection(
+        self, value: List[Any]
+    ) -> Union[np.ndarray, List[BaseEstimator]]:
+        # Handle list of lists (array) or flat list (meta-estimator)
         if isinstance(value, list) and value:
             if isinstance(value[0], list):
                 # 2D array
                 arr = []
                 for row in value:
-                    arr.append([
-                        self.deserialize(est) if isinstance(est, dict) and "estimator_class" in est else est
-                        for est in row
-                    ])
+                    arr.append(
+                        [
+                            (
+                                self.deserialize(est)
+                                if isinstance(est, dict) and "estimator_class" in est
+                                else est
+                            )
+                            for est in row
+                        ]
+                    )
                 return np.array(arr, dtype=object)
             else:
                 # Flat list
                 return [
-                    self.deserialize(est) if isinstance(est, dict) and "estimator_class" in est else est
+                    (
+                        self.deserialize(est)
+                        if isinstance(est, dict) and "estimator_class" in est
+                        else est
+                    )
                     for est in value
                 ]
         return value
@@ -800,9 +820,6 @@ class SklearnSerializer(
         params = model.get_params(deep=False)
         param_types, param_dtypes = self._get_type_maps(params)
 
-        print("Param types:", param_types)
-        print("Param dtypes:", param_dtypes)
-
         # Build serializable estimator including extra info
         serialized_estimator = {
             "estimator_class": model.__class__.__name__,
@@ -822,10 +839,6 @@ class SklearnSerializer(
         # Extract and build fitted attributes and its types/dtypes map
         attributes = self._extract_estimator_attributes(model)
         attribute_types, attribute_dtypes = self._get_type_maps(attributes)
-
-        # print types and dtypes for debugging
-        print("Attribute types:", attribute_types)
-        print("Attribute dtypes:", attribute_dtypes)
 
         serializable_attributes = self.convert_to_serializable(attributes)
 
