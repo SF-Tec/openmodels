@@ -130,6 +130,9 @@ def test_transformer(Transformer, data):
         skewedness = 0.5  # Default value for skewedness
         args["skewedness"] = skewedness
         x = np.abs(x) + skewedness  # Make all values >= -skewedness
+    if Transformer.__name__ == "SparseRandomProjection":
+        # Explicitly set n_components to avoid the ValueError
+        args["n_components"] = min(x.shape[1], 3)  # Set to a small value
 
 
     transformer = Transformer(**args)
