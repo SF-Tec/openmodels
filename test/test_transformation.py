@@ -18,7 +18,6 @@ TRANSFORMERS = [
 ]
 
 
-
 @pytest.fixture(scope="module")
 def data():
     # Generate dense data
@@ -113,6 +112,10 @@ def test_transformer(Transformer, data):
         rng = np.random.RandomState(42)
         dictionary = rng.rand(n_components, n_features)
         args["dictionary"] = dictionary
+    if Transformer.__name__ == "HashingVectorizer":
+        y = None
+        x = ["This is a test document.", "Another document for testing.", "Yet another one."]
+        x_sparse = None
 
 
     transformer = Transformer(**args)

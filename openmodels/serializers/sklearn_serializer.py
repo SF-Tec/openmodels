@@ -90,7 +90,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Exceptions encountered during testing:
     # Transformers:
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
-    "HashingVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
