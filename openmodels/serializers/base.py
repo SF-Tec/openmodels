@@ -123,6 +123,14 @@ class NumpySerializerMixin(SerializerMixin):
                 return "float64"  # Use float64 for float lists
         return ""
 
+    _POOLING_FUNC_REGISTRY = {
+        "mean": np.mean,
+        "median": np.median,
+        "max": np.max,
+        "min": np.min,
+        "sum": np.sum,
+    }
+    
     # --- NumPy specific serializers/deserializers ---
     def _serialize_ndarray(self, value: np.ndarray):
         return self.convert_to_serializable(value.tolist())
@@ -134,6 +142,20 @@ class NumpySerializerMixin(SerializerMixin):
         rs = np.random.RandomState()
         rs.set_state(tuple(value))
         return rs
+    
+    def _serialize_numpy_function(self, value):
+        # Only handle known numpy functions
+        for name, func in self._POOLING_FUNC_REGISTRY.items():
+            if value is func:
+                return {"numpy_function": name}
+        # fallback: use __name__ if possible
+        return {"numpy_function": getattr(value, "__name__", None)}
+
+    def _deserialize_numpy_function(self, value, value_dtype=None):
+        name = value.get("numpy_function")
+        if name in self._POOLING_FUNC_REGISTRY:
+            return self._POOLING_FUNC_REGISTRY[name]
+        raise ValueError(f"Unknown numpy function: {name}")
 
     # --- Handlers ---
     def _get_serializer_handlers(self):
@@ -146,6 +168,7 @@ class NumpySerializerMixin(SerializerMixin):
                 np.random.RandomState,
                 lambda v: [self.convert_to_serializable(x) for x in v.get_state()],
             ),
+            (type(np.mean), self._serialize_numpy_function),
         ]
 
     def _get_deserializer_handlers(self):
@@ -158,6 +181,7 @@ class NumpySerializerMixin(SerializerMixin):
             ("dtype", np.dtype),
             ("Float64DType", np.dtype),
             ("RandomState", self._deserialize_randomstate),
+            ("_ArrayFunctionDispatcher", self._deserialize_numpy_function),
         ]
 
 

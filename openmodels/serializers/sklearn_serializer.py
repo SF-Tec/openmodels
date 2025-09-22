@@ -87,8 +87,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     # Clusters:
-    #"BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
-    "FeatureAgglomeration",  # Object of type _ArrayFunctionDispatcher is not JSON serializable
     "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8')...]" not understood
     # Transformers:
     "ColumnTransformer",  # AttributeError: 'dict' object has no attribute 'transform'
