@@ -12,6 +12,7 @@ import inspect
 import sklearn
 from sklearn.calibration import _CalibratedClassifier, _SigmoidCalibration
 from sklearn.cluster._birch import _CFNode
+from sklearn.cluster._bisect_k_means import _BisectingTree
 from sklearn.ensemble._hist_gradient_boosting.predictor import TreePredictor
 from sklearn.ensemble._hist_gradient_boosting.binning import _BinMapper
 from sklearn.gaussian_process.kernels import Kernel
@@ -86,7 +87,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
     # Clusters:
-    "BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
+    #"BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
     "FeatureAgglomeration",  # Object of type _ArrayFunctionDispatcher is not JSON serializable
     "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8')...]" not understood
     # Transformers:
@@ -153,7 +154,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "IsotonicRegression": ["f_"],
     "TransformedTargetRegressor": ["_training_dim"],
     # Clusters:
-    "BisectingKMeans": ["_bisecting_tree"],
+    "BisectingKMeans": ["_bisecting_tree", "_n_threads", "_X_mean"],
     "Birch": ["_subcluster_norms"],
     "KMeans": ["_n_threads"],
     "MiniBatchKMeans": ["_n_threads"],
@@ -392,8 +393,9 @@ class SklearnSerializer(
             (Kernel, self._serialize_kernel),
             (Tree, self._serialize_tree),
             (TreePredictor, self._serialize_tree_predictor),
-            (_CalibratedClassifier, self._serialize_calibrated_classifier),
             (np.ndarray, self._serialize_estimators_ndarray),
+            (_CalibratedClassifier, self._serialize_calibrated_classifier),
+            (_BisectingTree, self._serialize_bisecting_tree),
             (_CurveScorer, self._serialize_curve_scorer),
             (_CFNode, self._serialize_cfnode),
         ] + super()._get_serializer_handlers()
@@ -416,6 +418,7 @@ class SklearnSerializer(
             [
                 ("estimators_ndarray", self._deserialize_estimators_ndarray),
                 ("TreePredictor", self._deserialize_tree_predictor),
+                ("_BisectingTree", self._deserialize_bisecting_tree),
                 ("_CalibratedClassifier", self._deserialize_calibrated_classifier),
                 ("_CurveScorer", self._deserialize_curve_scorer),
                 ("_CFNode", self._deserialize_cfnode),
@@ -427,6 +430,30 @@ class SklearnSerializer(
         )
 
     # --- Sklearn specific serializers/deserializers ---
+    def _serialize_bisecting_tree(self, tree: _BisectingTree) -> dict:
+        return {
+            "center": self.convert_to_serializable(tree.center),
+            "indices": self.convert_to_serializable(tree.indices),
+            "score": tree.score,
+            "label": getattr(tree, "label", None),
+            "left": self._serialize_bisecting_tree(tree.left) if tree.left else None,
+            "right": self._serialize_bisecting_tree(tree.right) if tree.right else None,
+        }
+
+    def _deserialize_bisecting_tree(self, data: dict) -> _BisectingTree:
+        if data is None:
+           return None
+        node = _BisectingTree(
+            center=self.convert_from_serializable(data["center"]),
+            indices=self.convert_from_serializable(data["indices"]),
+            score=data["score"],
+        )
+        if data.get("label") is not None:
+            node.label = data["label"]
+        node.left = self._deserialize_bisecting_tree(data["left"])
+        node.right = self._deserialize_bisecting_tree(data["right"])
+        return node
+
     def _serialize_calibrated_classifier(
         self, obj: _CalibratedClassifier
     ) -> Dict[str, Any]:
@@ -764,6 +791,9 @@ class SklearnSerializer(
         params = model.get_params(deep=False)
         param_types, param_dtypes = self._get_type_maps(params)
 
+        print("Param types:", param_types)
+        print("Param dtypes:", param_dtypes)
+
         # Build serializable estimator including extra info
         serialized_estimator = {
             "estimator_class": model.__class__.__name__,
@@ -783,6 +813,10 @@ class SklearnSerializer(
         # Extract and build fitted attributes and its types/dtypes map
         attributes = self._extract_estimator_attributes(model)
         attribute_types, attribute_dtypes = self._get_type_maps(attributes)
+
+        # print types and dtypes for debugging
+        print("Attribute types:", attribute_types)
+        print("Attribute dtypes:", attribute_dtypes)
 
         serializable_attributes = self.convert_to_serializable(attributes)
 
