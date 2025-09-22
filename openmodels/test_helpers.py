@@ -420,3 +420,23 @@ def test_feature_hasher_serialization():
     # Assertions for Example 2
     assert transformed_string.shape == (3, 8), "Unexpected shape for string input"
     assert not np.all(transformed_string == 0), "Transformation failed for string input"
+
+
+from sklearn.feature_selection import GenericUnivariateSelect, f_classif
+from openmodels.serializers.sklearn_serializer import SklearnSerializer
+
+def test_generic_univariate_select_serialization():
+    # Create the transformer
+    transformer = GenericUnivariateSelect(score_func=f_classif, mode="percentile", param=50)
+
+    # Serialize the transformer
+    serializer = SklearnSerializer()
+    serialized = serializer.serialize(transformer)
+
+    # Deserialize the transformer
+    deserialized = serializer.deserialize(serialized)
+
+    # Check that the deserialized transformer works as expected
+    assert deserialized.score_func == f_classif
+    assert deserialized.mode == "percentile"
+    assert deserialized.param == 50

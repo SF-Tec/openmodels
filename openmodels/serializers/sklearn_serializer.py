@@ -89,15 +89,9 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Clusters: all clusters work!! Hurray!
     # Exceptions encountered during testing:
     # Transformers:
-    "GenericUnivariateSelect",  # Object of type function is not JSON serializable
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    "SelectFdr",  # Object of type function is not JSON serializable
-    "SelectFpr",  # Object of type function is not JSON serializable
-    "SelectFwe",  # Object of type function is not JSON serializable
-    "SelectKBest",  # Object of type function is not JSON serializable
-    "SelectPercentile",  # Object of type function is not JSON serializable
     "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable

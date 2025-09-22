@@ -4,7 +4,13 @@ import numpy as np
 from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_classification
 from sklearn.feature_extraction import FeatureHasher
-from openmodels.test_helpers import run_test_model, run_test_label_binarizer, test_multilabelbinarizer_minimal, test_feature_hasher_serialization
+from openmodels.test_helpers import (
+    run_test_model,
+    run_test_label_binarizer,
+    test_multilabelbinarizer_minimal,
+    test_feature_hasher_serialization,
+    test_generic_univariate_select_serialization
+)
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
 from test.test_regression import REGRESSORS
 from test.test_classification import CLASSIFIERS
@@ -131,6 +137,9 @@ def test_transformer(Transformer, data):
         return
     if Transformer.__name__ in ["FeatureHasher"]:
         test_feature_hasher_serialization()
+        return
+    if Transformer.__name__ == "GenericUnivariateSelect":
+        test_generic_univariate_select_serialization()
         return
 
 

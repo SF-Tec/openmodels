@@ -13,7 +13,7 @@ from scipy.interpolate import interp1d  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: ignore
 import scipy.stats  # type: ignore
 
-from typing import Any, Optional
+from typing import Any, Optional, Callable, Dict
 
 
 class SerializerMixin:
@@ -86,12 +86,25 @@ class SerializerMixin:
         }
         return allowed_types.get(value["type_name"], float)
 
+    def _serialize_function(self, func: Callable) -> Dict[str, str]:
+        """Serialize a Python function by its module and name."""
+        return {
+            "module": func.__module__,
+            "name": func.__name__,
+        }
+
+    def _deserialize_function(self, data: Dict[str, str]) -> Callable:
+        """Deserialize a Python function from its module and name."""
+        module = __import__(data["module"], fromlist=[data["name"]])
+        return getattr(module, data["name"])
+    
     # --- Handlers ---
     def _get_serializer_handlers(self):
         """Each mixin extends this list."""
         return [
             (slice, self._serialize_slice),
             (type, self._serialize_type),
+            (Callable, self._serialize_function)
         ]
 
     def _get_deserializer_handlers(self):
@@ -103,6 +116,7 @@ class SerializerMixin:
             ("str", str),
             ("type", self._deserialize_type),
             ("tuple", tuple),
+            ("function", self._deserialize_function),
         ]
 
 
@@ -159,7 +173,7 @@ class NumpySerializerMixin(SerializerMixin):
 
     # --- Handlers ---
     def _get_serializer_handlers(self):
-        return super()._get_serializer_handlers() + [
+        return [
             (np.ndarray, self._serialize_ndarray),
             (np.generic, self._serialize_generic),
             (np.dtype, str),
@@ -169,10 +183,10 @@ class NumpySerializerMixin(SerializerMixin):
                 lambda v: [self.convert_to_serializable(x) for x in v.get_state()],
             ),
             (type(np.mean), self._serialize_numpy_function),
-        ]
+        ] + super()._get_serializer_handlers()
 
     def _get_deserializer_handlers(self):
-        return super()._get_deserializer_handlers() + [
+        return [
             ("ndarray", lambda v, dt=None: np.array(v, dtype=(dt or None))),
             ("generic", lambda v: np.array(v).item()),
             ("float64", np.float64),
@@ -182,7 +196,7 @@ class NumpySerializerMixin(SerializerMixin):
             ("Float64DType", np.dtype),
             ("RandomState", self._deserialize_randomstate),
             ("_ArrayFunctionDispatcher", self._deserialize_numpy_function),
-        ]
+        ] + super()._get_deserializer_handlers()
 
 
 class ScipySerializerMixin(SerializerMixin):
