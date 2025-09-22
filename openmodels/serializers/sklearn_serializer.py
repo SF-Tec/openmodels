@@ -94,8 +94,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
-    # Others:
-    #"LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
+    # Others: all others work!! Hurray!
 ]
 
 

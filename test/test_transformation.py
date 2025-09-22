@@ -122,9 +122,13 @@ def test_transformer(Transformer, data):
         y = None
         x = ["This is a test document.", "Another document for testing.", "Yet another one."]
         x_sparse = None
+    if Transformer.__name__ == "LocalOutlierFactor":
+        # Set novelty=True to enable the predict method
+        args["novelty"] = True
 
 
     transformer = Transformer(**args)
+
     if Transformer.__name__ == "MultiLabelBinarizer":
         test_multilabelbinarizer_minimal()
         return
