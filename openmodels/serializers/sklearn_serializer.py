@@ -89,7 +89,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Clusters: all clusters work!! Hurray!
     # Exceptions encountered during testing:
     # Transformers:
-    "FeatureHasher",  # TypeError: 'NoneType' object is not iterable
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
     "HashingVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has

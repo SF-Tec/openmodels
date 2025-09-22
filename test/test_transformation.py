@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_classification
 from sklearn.feature_extraction import FeatureHasher
-from openmodels.test_helpers import run_test_model, run_test_label_binarizer, test_multilabelbinarizer_minimal
+from openmodels.test_helpers import run_test_model, run_test_label_binarizer, test_multilabelbinarizer_minimal, test_feature_hasher_serialization
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
 from test.test_regression import REGRESSORS
 from test.test_classification import CLASSIFIERS
@@ -114,6 +114,7 @@ def test_transformer(Transformer, data):
         dictionary = rng.rand(n_components, n_features)
         args["dictionary"] = dictionary
 
+
     transformer = Transformer(**args)
     if Transformer.__name__ == "MultiLabelBinarizer":
         test_multilabelbinarizer_minimal()
@@ -124,6 +125,9 @@ def test_transformer(Transformer, data):
         y_int = y_int.astype(int)
         # Only y is used for fit/transform; x is ignored
         run_test_label_binarizer(transformer, y_int, f"{Transformer.__name__.lower()}.json")
+        return
+    if Transformer.__name__ in ["FeatureHasher"]:
+        test_feature_hasher_serialization()
         return
 
 
