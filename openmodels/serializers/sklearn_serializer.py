@@ -89,7 +89,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Clusters: all clusters work!! Hurray!
     # Exceptions encountered during testing:
     # Transformers:
-    "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
+    #"LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
     "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
     "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
