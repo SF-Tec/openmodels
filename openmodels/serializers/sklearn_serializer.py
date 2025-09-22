@@ -5,7 +5,7 @@ This module provides a serializer for scikit-learn models, allowing them to be
 converted to and from dictionary representations.
 """
 
-from typing import Any, Callable, Dict, List, Tuple, Type, Optional
+from typing import Any, Callable, Dict, List, Tuple, Type, Optional, Union
 import numpy as np
 import inspect
 
@@ -36,6 +36,7 @@ from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.discovery import all_estimators
 from sklearn.neighbors import KDTree
+from tomlkit import value
 
 from openmodels.exceptions import UnsupportedEstimatorError
 from openmodels.protocols import ModelSerializer
@@ -84,8 +85,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors: all regressors work!! Hurray!
     # Exceptions encountered during testing:
     # Classifiers:
-    "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
-    "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
+    "OutputCodeClassifier",  # KeyError: '_ConstantPredictor
     # Clusters: all clusters work!! Hurray!
     # Transformers:
     "ColumnTransformer",  # AttributeError: 'dict' object has no attribute 'transform'
@@ -321,14 +321,23 @@ class SklearnSerializer(
         [1, [1, 2, [1, 2, 3]], 2] -> ['int',['int','int','ndarray'],'int']
 
         """
+        # Handle np.ndarray of estimators
         if (
             isinstance(item, np.ndarray)
             and item.dtype == np.dtype("O")
             and item.size > 0
+            and isinstance(item.ravel()[0], BaseEstimator)
         ):
-            first_elem = item.ravel()[0]
-            if isinstance(first_elem, BaseEstimator):
-                return "estimators_ndarray"
+            return "estimators_collection"
+        
+        # Handle lists or tuple of estimators
+        if (
+            isinstance(item, (list, tuple))
+            and item
+            and isinstance(item[0], BaseEstimator)
+        ):
+            return "estimators_collection"
+        
         if isinstance(item, List) and item:  # If it's a list and not empty
             return [self._get_nested_types(subitem) for subitem in item]
         elif isinstance(item, BaseEstimator):
@@ -390,7 +399,7 @@ class SklearnSerializer(
             (Kernel, self._serialize_kernel),
             (Tree, self._serialize_tree),
             (TreePredictor, self._serialize_tree_predictor),
-            (np.ndarray, self._serialize_estimators_ndarray),
+            (np.ndarray, self._serialize_estimators_collection),
             (_CalibratedClassifier, self._serialize_calibrated_classifier),
             (_BisectingTree, self._serialize_bisecting_tree),
             (_CurveScorer, self._serialize_curve_scorer),
@@ -413,7 +422,7 @@ class SklearnSerializer(
         ]
         return (
             [
-                ("estimators_ndarray", self._deserialize_estimators_ndarray),
+                ("estimators_collection", self._deserialize_estimators_collection),
                 ("TreePredictor", self._deserialize_tree_predictor),
                 ("_BisectingTree", self._deserialize_bisecting_tree),
                 ("_CalibratedClassifier", self._deserialize_calibrated_classifier),
@@ -645,33 +654,38 @@ class SklearnSerializer(
         # Create KDTree with data - the tree will be rebuilt automatically
         return KDTree(data)
 
-    def _serialize_estimators_ndarray(self, value: np.ndarray) -> List[Any]:
-        # Special handling for arrays of estimators
-        if value.dtype == np.dtype("O") and value.size > 0:
-            first_elem = value.ravel()[0]
-            if isinstance(first_elem, BaseEstimator):
-                # This is an array of estimators, serialize each one
+    def _serialize_estimators_collection(self, value: Union[np.ndarray, List[BaseEstimator]]) -> List[Any]:
+        # Accept both numpy arrays and lists of estimators
+        if isinstance(value, np.ndarray):
+            if value.dtype == np.dtype("O") and value.size > 0 and isinstance(value.ravel()[0], BaseEstimator):
                 return [
                     [self.convert_to_serializable(est) for est in row] for row in value
                 ]
-        # Regular array handling
-        return self._serialize_ndarray(value)
+            return self._serialize_ndarray(value)
 
-    def _deserialize_estimators_ndarray(self, value: List[Any]) -> np.ndarray:
-        # value is a list of lists of estimator dicts
-        arr = []
-        for row in value:
-            arr.append(
-                [
-                    (
-                        self.deserialize(est)
-                        if isinstance(est, dict) and "estimator_class" in est
-                        else est
-                    )
-                    for est in row
+        if isinstance(value, (list, tuple)) and value and isinstance(value[0], BaseEstimator):
+            return [self.convert_to_serializable(est) for est in value]
+        return value
+
+    def _deserialize_estimators_collection(self, value: List[Any]) -> Union[np.ndarray, List[BaseEstimator]]:
+         # Handle list of lists (array) or flat list (meta-estimator)
+        if isinstance(value, list) and value:
+            if isinstance(value[0], list):
+                # 2D array
+                arr = []
+                for row in value:
+                    arr.append([
+                        self.deserialize(est) if isinstance(est, dict) and "estimator_class" in est else est
+                        for est in row
+                    ])
+                return np.array(arr, dtype=object)
+            else:
+                # Flat list
+                return [
+                    self.deserialize(est) if isinstance(est, dict) and "estimator_class" in est else est
+                    for est in value
                 ]
-            )
-        return np.array(arr, dtype=object)
+        return value
 
     def _serialize_kernel(self, kernel: Kernel) -> Dict[str, Any]:
         """
