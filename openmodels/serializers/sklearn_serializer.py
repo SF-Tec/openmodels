@@ -90,7 +90,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Exceptions encountered during testing:
     # Transformers:
     "PatchExtractor",  # AssertionError: Reconstructed image does not match the original!
-    "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
     # Others:
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
 ]
@@ -196,6 +195,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "MultiLabelBinarizer": ["_cached_dict"],
     "PolynomialFeatures": ["_max_degree", "_n_out_full", "_min_degree"],
     "PLSSVD": ["_x_mean", "_x_std"],
+    "TargetEncoder": ["_infrequent_enabled"],
     # Others:
     "IsolationForest": [
         "_max_features",
