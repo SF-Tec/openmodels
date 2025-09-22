@@ -31,6 +31,7 @@ from sklearn._loss.loss import (
 )
 from sklearn.metrics._scorer import _CurveScorer
 from sklearn.metrics import get_scorer_names, get_scorer
+from sklearn.multiclass import _ConstantPredictor
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
@@ -78,15 +79,15 @@ ALL_ESTIMATORS["_SigmoidCalibration"] = _SigmoidCalibration
 ALL_ESTIMATORS["_BinaryGaussianProcessClassifierLaplace"] = (
     _BinaryGaussianProcessClassifierLaplace
 )
+ALL_ESTIMATORS["_ConstantPredictor"] = _ConstantPredictor
 
 TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors: all regressors work!! Hurray!
-    # Exceptions encountered during testing:
-    # Classifiers:
-    "OutputCodeClassifier",  # KeyError: '_ConstantPredictor
+    # Classifiers: all classifiers work!! Hurray!
     # Clusters: all clusters work!! Hurray!
+    # Exceptions encountered during testing:
     # Transformers:
     "ColumnTransformer",  # AttributeError: 'dict' object has no attribute 'transform'
     "FeatureHasher",  # TypeError: 'NoneType' object is not iterable
