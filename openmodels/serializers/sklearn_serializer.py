@@ -89,14 +89,13 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Clusters: all clusters work!! Hurray!
     # Exceptions encountered during testing:
     # Transformers:
-    #"NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
     "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
-    "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
-    "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
+    # Others:
+    #"LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
 ]
 
 
