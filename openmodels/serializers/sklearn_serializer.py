@@ -88,7 +88,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Clusters: all clusters work!! Hurray!
     # Exceptions encountered during testing:
     # Transformers:
-    "PatchExtractor",  # AssertionError: Reconstructed image does not match the original!
+    "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
     # Others:
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
 ]
