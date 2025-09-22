@@ -916,7 +916,6 @@ class SklearnSerializer(
                 param_value = tuple(param_value)
             param_type = param_types.get(param_name)
             param_dtype = param_dtypes.get(param_name) or None
-            param_dtype = param_dtypes.get(param_name) or None
             reconstructed_params[param_name] = self.convert_from_serializable(
                 param_value, param_type, param_dtype
             )
