@@ -90,7 +90,6 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Exceptions encountered during testing:
     # Transformers:
     "PatchExtractor",  # AssertionError: Reconstructed image does not match the original!
-    "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
     # Others:
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
