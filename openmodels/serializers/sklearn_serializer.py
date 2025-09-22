@@ -86,8 +86,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Classifiers:
     "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
     "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
-    # Clusters:
-    "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8')...]" not understood
+    # Clusters: all clusters work!! Hurray!
     # Transformers:
     "ColumnTransformer",  # AttributeError: 'dict' object has no attribute 'transform'
     "FeatureHasher",  # TypeError: 'NoneType' object is not iterable
