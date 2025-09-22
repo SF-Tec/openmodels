@@ -9,11 +9,11 @@ support for new serialization targets.
 
 import numpy as np
 from scipy.sparse import csr_matrix  # type: ignore
-from scipy.interpolate import interp1d  # type: ignore
+from scipy.interpolate import interp1d, BSpline  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous_frozen  # type: ignore
 import scipy.stats  # type: ignore
 
-from typing import Any, Optional
+from typing import Any, Optional, Callable, Dict
 
 
 class SerializerMixin:
@@ -86,12 +86,25 @@ class SerializerMixin:
         }
         return allowed_types.get(value["type_name"], float)
 
+    def _serialize_function(self, func: Callable) -> Dict[str, str]:
+        """Serialize a Python function by its module and name."""
+        return {
+            "module": func.__module__,
+            "name": func.__name__,
+        }
+
+    def _deserialize_function(self, data: Dict[str, str]) -> Callable:
+        """Deserialize a Python function from its module and name."""
+        module = __import__(data["module"], fromlist=[data["name"]])
+        return getattr(module, data["name"])
+
     # --- Handlers ---
     def _get_serializer_handlers(self):
         """Each mixin extends this list."""
         return [
             (slice, self._serialize_slice),
             (type, self._serialize_type),
+            (Callable, self._serialize_function),
         ]
 
     def _get_deserializer_handlers(self):
@@ -103,6 +116,7 @@ class SerializerMixin:
             ("str", str),
             ("type", self._deserialize_type),
             ("tuple", tuple),
+            ("function", self._deserialize_function),
         ]
 
 
@@ -123,6 +137,14 @@ class NumpySerializerMixin(SerializerMixin):
                 return "float64"  # Use float64 for float lists
         return ""
 
+    _POOLING_FUNC_REGISTRY = {
+        "mean": np.mean,
+        "median": np.median,
+        "max": np.max,
+        "min": np.min,
+        "sum": np.sum,
+    }
+
     # --- NumPy specific serializers/deserializers ---
     def _serialize_ndarray(self, value: np.ndarray):
         return self.convert_to_serializable(value.tolist())
@@ -135,9 +157,23 @@ class NumpySerializerMixin(SerializerMixin):
         rs.set_state(tuple(value))
         return rs
 
+    def _serialize_numpy_function(self, value):
+        # Only handle known numpy functions
+        for name, func in self._POOLING_FUNC_REGISTRY.items():
+            if value is func:
+                return {"numpy_function": name}
+        # fallback: use __name__ if possible
+        return {"numpy_function": getattr(value, "__name__", None)}
+
+    def _deserialize_numpy_function(self, value, value_dtype=None):
+        name = value.get("numpy_function")
+        if name in self._POOLING_FUNC_REGISTRY:
+            return self._POOLING_FUNC_REGISTRY[name]
+        raise ValueError(f"Unknown numpy function: {name}")
+
     # --- Handlers ---
     def _get_serializer_handlers(self):
-        return super()._get_serializer_handlers() + [
+        return [
             (np.ndarray, self._serialize_ndarray),
             (np.generic, self._serialize_generic),
             (np.dtype, str),
@@ -146,10 +182,11 @@ class NumpySerializerMixin(SerializerMixin):
                 np.random.RandomState,
                 lambda v: [self.convert_to_serializable(x) for x in v.get_state()],
             ),
-        ]
+            (type(np.mean), self._serialize_numpy_function),
+        ] + super()._get_serializer_handlers()
 
     def _get_deserializer_handlers(self):
-        return super()._get_deserializer_handlers() + [
+        return [
             ("ndarray", lambda v, dt=None: np.array(v, dtype=(dt or None))),
             ("generic", lambda v: np.array(v).item()),
             ("float64", np.float64),
@@ -158,7 +195,8 @@ class NumpySerializerMixin(SerializerMixin):
             ("dtype", np.dtype),
             ("Float64DType", np.dtype),
             ("RandomState", self._deserialize_randomstate),
-        ]
+            ("_ArrayFunctionDispatcher", self._deserialize_numpy_function),
+        ] + super()._get_deserializer_handlers()
 
 
 class ScipySerializerMixin(SerializerMixin):
@@ -218,17 +256,41 @@ class ScipySerializerMixin(SerializerMixin):
         dist = getattr(scipy.stats, value["dist_name"])
         return dist(*value["args"], **value["kwargs"])
 
+    def _serialize_bspline(self, spline: BSpline) -> Dict[str, Any]:
+        """
+        Serialize a scipy.interpolate.BSpline object.
+        """
+        return {
+            "t": spline.t.tolist(),  # Knots
+            "c": spline.c.tolist(),  # Coefficients
+            "k": spline.k,  # Degree
+            "extrapolate": spline.extrapolate,
+        }
+
+    def _deserialize_bspline(self, data: Dict[str, Any]) -> BSpline:
+        """
+        Deserialize a dictionary back into a scipy.interpolate.BSpline object.
+        """
+        return BSpline(
+            t=np.array(data["t"]),
+            c=np.array(data["c"]),
+            k=data["k"],
+            extrapolate=data["extrapolate"],
+        )
+
     # --- Handlers ---
     def _get_serializer_handlers(self):
-        return super()._get_serializer_handlers() + [
+        return [
+            (BSpline, self._serialize_bspline),
             (csr_matrix, self._serialize_csr_matrix),
             (interp1d, self._serialize_interp1d),
             (rv_continuous_frozen, self._serialize_scipy_dist),
-        ]
+        ] + super()._get_serializer_handlers()
 
     def _get_deserializer_handlers(self):
-        return super()._get_deserializer_handlers() + [
+        return [
+            ("BSpline", self._deserialize_bspline),
             ("csr_matrix", self._deserialize_csr_matrix),
             ("interp1d", self._deserialize_interp1d),
             ("scipy_dist", self._deserialize_scipy_dist),
-        ]
+        ] + super()._get_deserializer_handlers()

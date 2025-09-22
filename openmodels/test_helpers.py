@@ -8,6 +8,8 @@ from typing import Optional, Union, Protocol, runtime_checkable, TypeVar, cast
 import numpy as np
 from numpy import testing
 from sklearn.base import BaseEstimator
+from sklearn.feature_extraction import FeatureHasher
+from sklearn.feature_selection import GenericUnivariateSelect, f_classif
 from sklearn.preprocessing import LabelBinarizer
 from scipy.sparse import csr_matrix  # type: ignore
 
@@ -400,3 +402,44 @@ def test_multilabelbinarizer_minimal():
 
     assert list(mlb2.classes_) == classes
     np.testing.assert_array_equal(transformed, mlb2.transform(y_str))
+
+
+def test_feature_hasher_serialization():
+    # Example 1: Using dictionaries as input
+    hasher_dict = FeatureHasher(n_features=10)
+    D = [{"dog": 1, "cat": 2, "elephant": 4}, {"dog": 2, "run": 5}]
+    transformed_dict = hasher_dict.transform(D).toarray()
+
+    # Example 2: Using strings as input
+    hasher_string = FeatureHasher(n_features=8, input_type="string")
+    raw_X = [["dog", "cat", "snake"], ["snake", "dog"], ["cat", "bird"]]
+    transformed_string = hasher_string.transform(raw_X).toarray()
+
+    # Assertions for Example 1
+    assert transformed_dict.shape == (2, 10), "Unexpected shape for dictionary input"
+    assert not np.all(
+        transformed_dict == 0
+    ), "Transformation failed for dictionary input"
+
+    # Assertions for Example 2
+    assert transformed_string.shape == (3, 8), "Unexpected shape for string input"
+    assert not np.all(transformed_string == 0), "Transformation failed for string input"
+
+
+def test_generic_univariate_select_serialization():
+    # Create the transformer
+    transformer = GenericUnivariateSelect(
+        score_func=f_classif, mode="percentile", param=50
+    )
+
+    # Serialize the transformer
+    serializer = SklearnSerializer()
+    serialized = serializer.serialize(transformer)
+
+    # Deserialize the transformer
+    deserialized = serializer.deserialize(serialized)
+
+    # Check that the deserialized transformer works as expected
+    assert deserialized.score_func == f_classif
+    assert deserialized.mode == "percentile"
+    assert deserialized.param == 50

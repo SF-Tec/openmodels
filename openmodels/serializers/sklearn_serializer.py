@@ -5,13 +5,14 @@ This module provides a serializer for scikit-learn models, allowing them to be
 converted to and from dictionary representations.
 """
 
-from typing import Any, Callable, Dict, List, Tuple, Type, Optional
+from typing import Any, Callable, Dict, List, Tuple, Type, Optional, Union
 import numpy as np
 import inspect
 
 import sklearn
 from sklearn.calibration import _CalibratedClassifier, _SigmoidCalibration
 from sklearn.cluster._birch import _CFNode
+from sklearn.cluster._bisect_k_means import _BisectingTree
 from sklearn.ensemble._hist_gradient_boosting.predictor import TreePredictor
 from sklearn.ensemble._hist_gradient_boosting.binning import _BinMapper
 from sklearn.gaussian_process.kernels import Kernel
@@ -30,6 +31,7 @@ from sklearn._loss.loss import (
 )
 from sklearn.metrics._scorer import _CurveScorer
 from sklearn.metrics import get_scorer_names, get_scorer
+from sklearn.multiclass import _ConstantPredictor
 from sklearn.tree._tree import Tree
 from sklearn.base import BaseEstimator, check_is_fitted
 from sklearn.exceptions import NotFittedError
@@ -76,38 +78,18 @@ ALL_ESTIMATORS["_SigmoidCalibration"] = _SigmoidCalibration
 ALL_ESTIMATORS["_BinaryGaussianProcessClassifierLaplace"] = (
     _BinaryGaussianProcessClassifierLaplace
 )
+ALL_ESTIMATORS["_ConstantPredictor"] = _ConstantPredictor
 
 TESTED_VERSIONS = ["1.6.1", "1.7.1"]
 
 NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Regressors: all regressors work!! Hurray!
+    # Classifiers: all classifiers work!! Hurray!
+    # Clusters: all clusters work!! Hurray!
     # Exceptions encountered during testing:
-    # Classifiers:
-    "OneVsOneClassifier",  # AttributeError: 'dict' object has no attribute 'predict'
-    "OutputCodeClassifier",  # AttributeError: 'dict' object has no attribute 'predict_proba'
-    # Clusters:
-    "BisectingKMeans",  # Object of type _BisectingTree is not JSON serializable
-    "FeatureAgglomeration",  # Object of type _ArrayFunctionDispatcher is not JSON serializable
-    "HDBSCAN",  # data type "[('left_node', '<i8'), ('right_node', '<i8')...]" not understood
     # Transformers:
-    "ColumnTransformer",  # AttributeError: 'dict' object has no attribute 'transform'
-    "FeatureHasher",  # TypeError: 'NoneType' object is not iterable
-    "FeatureUnion",  # AttributeError: 'dict' object has no attribute 'transform'
-    "GenericUnivariateSelect",  # Object of type function is not JSON serializable
-    "HashingVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
-    "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
-    "NeighborhoodComponentsAnalysis",  # This NeighborhoodComponentsAnalysis estimator requires y to be passed, but the target y is None.
     "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    "SelectFdr",  # Object of type function is not JSON serializable
-    "SelectFpr",  # Object of type function is not JSON serializable
-    "SelectFwe",  # Object of type function is not JSON serializable
-    "SelectKBest",  # Object of type function is not JSON serializable
-    "SelectPercentile",  # Object of type function is not JSON serializable
-    "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
-    "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
-    "SplineTransformer",  # Object of type BSpline is not JSON serializable
-    "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
-    "IsolationForest",  # TypeError: only integer scalar arrays can be converted to a scalar index
+    # Others:
     "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
 ]
 
@@ -153,7 +135,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "IsotonicRegression": ["f_"],
     "TransformedTargetRegressor": ["_training_dim"],
     # Clusters:
-    "BisectingKMeans": ["_bisecting_tree"],
+    "BisectingKMeans": ["_bisecting_tree", "_n_threads", "_X_mean"],
     "Birch": ["_subcluster_norms"],
     "KMeans": ["_n_threads"],
     "MiniBatchKMeans": ["_n_threads"],
@@ -212,6 +194,7 @@ ATTRIBUTE_EXCEPTIONS: Dict[str, List] = {
     "MultiLabelBinarizer": ["_cached_dict"],
     "PolynomialFeatures": ["_max_degree", "_n_out_full", "_min_degree"],
     "PLSSVD": ["_x_mean", "_x_std"],
+    "TargetEncoder": ["_infrequent_enabled"],
     # Others:
     "IsolationForest": [
         "_max_features",
@@ -323,16 +306,31 @@ class SklearnSerializer(
         [1, [1, 2, [1, 2, 3]], 2] -> ['int',['int','int','ndarray'],'int']
 
         """
+        # Handle np.ndarray of estimators
         if (
             isinstance(item, np.ndarray)
             and item.dtype == np.dtype("O")
             and item.size > 0
+            and isinstance(item.ravel()[0], BaseEstimator)
         ):
-            first_elem = item.ravel()[0]
-            if isinstance(first_elem, BaseEstimator):
-                return "estimators_ndarray"
-        if isinstance(item, List) and item:  # If it's a list and not empty
+            return "estimators_collection"
+
+        # Handle lists or tuple of estimators
+        if (
+            isinstance(item, (list, tuple))
+            and item
+            and isinstance(item[0], BaseEstimator)
+        ):
+            return "estimators_collection"
+
+        # Handle tuples explicitly
+        if isinstance(item, tuple):
+            return tuple(self._get_nested_types(subitem) for subitem in item)
+
+        # Handle lists
+        if isinstance(item, list):
             return [self._get_nested_types(subitem) for subitem in item]
+
         elif isinstance(item, BaseEstimator):
             # For estimators, return their class name instead of just 'BaseEstimator'
             return item.__class__.__name__
@@ -354,6 +352,11 @@ class SklearnSerializer(
             if isinstance(value, np.ndarray)
             or (isinstance(value, (list, tuple)) and value)  # non-empty list/tuple
         }
+
+        # Ensure tuples are not included in dtypes_map
+        for key, value in values_dict.items():
+            if isinstance(value, tuple):
+                dtypes_map.pop(key, None)  # Remove tuples from dtypes_map
 
         return types_map, dtypes_map
 
@@ -392,8 +395,9 @@ class SklearnSerializer(
             (Kernel, self._serialize_kernel),
             (Tree, self._serialize_tree),
             (TreePredictor, self._serialize_tree_predictor),
+            (np.ndarray, self._serialize_estimators_collection),
             (_CalibratedClassifier, self._serialize_calibrated_classifier),
-            (np.ndarray, self._serialize_estimators_ndarray),
+            (_BisectingTree, self._serialize_bisecting_tree),
             (_CurveScorer, self._serialize_curve_scorer),
             (_CFNode, self._serialize_cfnode),
         ] + super()._get_serializer_handlers()
@@ -414,8 +418,9 @@ class SklearnSerializer(
         ]
         return (
             [
-                ("estimators_ndarray", self._deserialize_estimators_ndarray),
+                ("estimators_collection", self._deserialize_estimators_collection),
                 ("TreePredictor", self._deserialize_tree_predictor),
+                ("_BisectingTree", self._deserialize_bisecting_tree),
                 ("_CalibratedClassifier", self._deserialize_calibrated_classifier),
                 ("_CurveScorer", self._deserialize_curve_scorer),
                 ("_CFNode", self._deserialize_cfnode),
@@ -427,6 +432,30 @@ class SklearnSerializer(
         )
 
     # --- Sklearn specific serializers/deserializers ---
+    def _serialize_bisecting_tree(self, tree: _BisectingTree) -> dict:
+        return {
+            "center": self.convert_to_serializable(tree.center),
+            "indices": self.convert_to_serializable(tree.indices),
+            "score": tree.score,
+            "label": getattr(tree, "label", None),
+            "left": self._serialize_bisecting_tree(tree.left) if tree.left else None,
+            "right": self._serialize_bisecting_tree(tree.right) if tree.right else None,
+        }
+
+    def _deserialize_bisecting_tree(self, data: dict) -> _BisectingTree:
+        if data is None:
+            return None
+        node = _BisectingTree(
+            center=self.convert_from_serializable(data["center"]),
+            indices=self.convert_from_serializable(data["indices"]),
+            score=data["score"],
+        )
+        if data.get("label") is not None:
+            node.label = data["label"]
+        node.left = self._deserialize_bisecting_tree(data["left"])
+        node.right = self._deserialize_bisecting_tree(data["right"])
+        return node
+
     def _serialize_calibrated_classifier(
         self, obj: _CalibratedClassifier
     ) -> Dict[str, Any]:
@@ -621,33 +650,60 @@ class SklearnSerializer(
         # Create KDTree with data - the tree will be rebuilt automatically
         return KDTree(data)
 
-    def _serialize_estimators_ndarray(self, value: np.ndarray) -> List[Any]:
-        # Special handling for arrays of estimators
-        if value.dtype == np.dtype("O") and value.size > 0:
-            first_elem = value.ravel()[0]
-            if isinstance(first_elem, BaseEstimator):
-                # This is an array of estimators, serialize each one
+    def _serialize_estimators_collection(
+        self, value: Union[np.ndarray, List[BaseEstimator]]
+    ) -> List[Any]:
+        # Accept both numpy arrays and lists of estimators
+        if isinstance(value, np.ndarray):
+            if (
+                value.dtype == np.dtype("O")
+                and value.size > 0
+                and isinstance(value.ravel()[0], BaseEstimator)
+            ):
                 return [
                     [self.convert_to_serializable(est) for est in row] for row in value
                 ]
-        # Regular array handling
-        return self._serialize_ndarray(value)
+            return self._serialize_ndarray(value)
 
-    def _deserialize_estimators_ndarray(self, value: List[Any]) -> np.ndarray:
-        # value is a list of lists of estimator dicts
-        arr = []
-        for row in value:
-            arr.append(
-                [
+        if (
+            isinstance(value, (list, tuple))
+            and value
+            and isinstance(value[0], BaseEstimator)
+        ):
+            return [self.convert_to_serializable(est) for est in value]
+        return value
+
+    def _deserialize_estimators_collection(
+        self, value: List[Any]
+    ) -> Union[np.ndarray, List[BaseEstimator]]:
+        # Handle list of lists (array) or flat list (meta-estimator)
+        if isinstance(value, list) and value:
+            if isinstance(value[0], list):
+                # 2D array
+                arr = []
+                for row in value:
+                    arr.append(
+                        [
+                            (
+                                self.deserialize(est)
+                                if isinstance(est, dict) and "estimator_class" in est
+                                else est
+                            )
+                            for est in row
+                        ]
+                    )
+                return np.array(arr, dtype=object)
+            else:
+                # Flat list
+                return [
                     (
                         self.deserialize(est)
                         if isinstance(est, dict) and "estimator_class" in est
                         else est
                     )
-                    for est in row
+                    for est in value
                 ]
-            )
-        return np.array(arr, dtype=object)
+        return value
 
     def _serialize_kernel(self, kernel: Kernel) -> Dict[str, Any]:
         """
@@ -835,6 +891,11 @@ class SklearnSerializer(
         param_types = data.get("param_types", {})
         param_dtypes = data.get("param_dtypes", {})
 
+        # Ensure tuples are reconstructed correctly
+        for key, value in params.items():
+            if param_types.get(key) == "tuple" and isinstance(value, list):
+                params[key] = tuple(value)
+
         # Get valid constructor arguments for the estimator
         estimator_cls = ALL_ESTIMATORS[estimator_class]
         valid_args = list(inspect.signature(estimator_cls.__init__).parameters.keys())
@@ -846,25 +907,18 @@ class SklearnSerializer(
             # Only include params that are valid constructor arguments
             if param_name not in valid_args:
                 continue
+            # Handle PatchExtractor's 'patch_size' parameter
+            if (
+                estimator_class == "PatchExtractor"
+                and param_name == "patch_size"
+                and isinstance(param_value, list)
+            ):
+                param_value = tuple(param_value)
             param_type = param_types.get(param_name)
             param_dtype = param_dtypes.get(param_name) or None
-            # Special handling for Pipeline steps
-            if estimator_class == "Pipeline" and param_name == "steps":
-                reconstructed_params[param_name] = [
-                    (
-                        name,
-                        (
-                            self.deserialize(est)
-                            if isinstance(est, dict) and "estimator_class" in est
-                            else est
-                        ),
-                    )
-                    for name, est in param_value
-                ]
-            else:
-                reconstructed_params[param_name] = self.convert_from_serializable(
-                    param_value, param_type, param_dtype
-                )
+            reconstructed_params[param_name] = self.convert_from_serializable(
+                param_value, param_type, param_dtype
+            )
         model = estimator_cls(**reconstructed_params)
 
         if "attributes" not in data:
@@ -881,8 +935,6 @@ class SklearnSerializer(
             # Skip _tree attribute for KDTree - let the transformer recreate it
             if attr_type == "KDTree":
                 model._tree = self._deserialize_kdtree(value)
-                continue
-            if estimator_class == "Pipeline" and attribute == "steps":
                 continue
             # Use convert_from_serializable for all attributes
             setattr(

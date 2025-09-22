@@ -4,7 +4,13 @@ import numpy as np
 from sklearn.utils.discovery import all_estimators
 from sklearn.datasets import make_classification
 from sklearn.feature_extraction import FeatureHasher
-from openmodels.test_helpers import run_test_model, run_test_label_binarizer, test_multilabelbinarizer_minimal
+from openmodels.test_helpers import (
+    run_test_model,
+    run_test_label_binarizer,
+    test_multilabelbinarizer_minimal,
+    test_feature_hasher_serialization,
+    test_generic_univariate_select_serialization,
+)
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
 from test.test_regression import REGRESSORS
 from test.test_classification import CLASSIFIERS
@@ -16,7 +22,6 @@ TRANSFORMERS = [
     and name not in [reg.__name__ for reg in REGRESSORS]
     and name not in [clf.__name__ for clf in CLASSIFIERS]
 ]
-
 
 
 @pytest.fixture(scope="module")
@@ -113,8 +118,25 @@ def test_transformer(Transformer, data):
         rng = np.random.RandomState(42)
         dictionary = rng.rand(n_components, n_features)
         args["dictionary"] = dictionary
+    if Transformer.__name__ == "HashingVectorizer":
+        y = None
+        x = ["This is a test document.", "Another document for testing.", "Yet another one."]
+        x_sparse = None
+    if Transformer.__name__ == "LocalOutlierFactor":
+        # Set novelty=True to enable the predict method
+        args["novelty"] = True
+    if Transformer.__name__ == "SkewedChi2Sampler":
+        # Ensure X satisfies the condition X >= -skewedness
+        skewedness = 0.5  # Default value for skewedness
+        args["skewedness"] = skewedness
+        x = np.abs(x) + skewedness  # Make all values >= -skewedness
+    if Transformer.__name__ == "SparseRandomProjection":
+        # Explicitly set n_components to avoid the ValueError
+        args["n_components"] = min(x.shape[1], 3)  # Set to a small value
+
 
     transformer = Transformer(**args)
+
     if Transformer.__name__ == "MultiLabelBinarizer":
         test_multilabelbinarizer_minimal()
         return
@@ -124,6 +146,12 @@ def test_transformer(Transformer, data):
         y_int = y_int.astype(int)
         # Only y is used for fit/transform; x is ignored
         run_test_label_binarizer(transformer, y_int, f"{Transformer.__name__.lower()}.json")
+        return
+    if Transformer.__name__ in ["FeatureHasher"]:
+        test_feature_hasher_serialization()
+        return
+    if Transformer.__name__ == "GenericUnivariateSelect":
+        test_generic_univariate_select_serialization()
         return
 
 
