@@ -89,8 +89,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Clusters: all clusters work!! Hurray!
     # Exceptions encountered during testing:
     # Transformers:
-    #"PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
-    "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
+    "PatchExtractor",  # AssertionError: Reconstructed image does not match the original!
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None

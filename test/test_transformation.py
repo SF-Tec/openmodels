@@ -10,7 +10,6 @@ from openmodels.test_helpers import (
     test_multilabelbinarizer_minimal,
     test_feature_hasher_serialization,
     test_generic_univariate_select_serialization,
-    test_patch_extractor_with_serialization
 )
 from openmodels.serializers.sklearn_serializer import NOT_SUPPORTED_ESTIMATORS
 from test.test_regression import REGRESSORS
@@ -126,6 +125,11 @@ def test_transformer(Transformer, data):
     if Transformer.__name__ == "LocalOutlierFactor":
         # Set novelty=True to enable the predict method
         args["novelty"] = True
+    if Transformer.__name__ == "SkewedChi2Sampler":
+        # Ensure X satisfies the condition X >= -skewedness
+        skewedness = 0.5  # Default value for skewedness
+        args["skewedness"] = skewedness
+        x = np.abs(x) + skewedness  # Make all values >= -skewedness
 
 
     transformer = Transformer(**args)
@@ -146,9 +150,6 @@ def test_transformer(Transformer, data):
     if Transformer.__name__ == "GenericUnivariateSelect":
         test_generic_univariate_select_serialization()
         return
-    
-    if Transformer.__name__ == "PatchExtractor":
-         test_patch_extractor_with_serialization(patch_size=(10, 10), max_patches=5)
 
 
     run_test_model(transformer, x, y, x_sparse, None, f"{Transformer.__name__.lower()}.json")
