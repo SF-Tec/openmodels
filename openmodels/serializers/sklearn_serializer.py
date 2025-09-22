@@ -89,12 +89,13 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Clusters: all clusters work!! Hurray!
     # Exceptions encountered during testing:
     # Transformers:
-    "PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
+    #"PatchExtractor",  # ValueError: not enough values to unpack (expected 3, got 2)
     "SkewedChi2Sampler",  # ValueError: X may not contain entries smaller than -skewedness.
     "SparseRandomProjection",  # ValueError: lead to a target dimension of 3353 which is larger than the original space with n_features=5
     "SplineTransformer",  # Object of type BSpline is not JSON serializable
     "TargetEncoder",  # ValueError: Expected array-like (array or non-string sequence), got None
-    # Others: all others work!! Hurray!
+    # Others:
+    "LocalOutlierFactor",  # AttributeError: This 'LocalOutlierFactor' has no attribute 'predict'
 ]
 
 
@@ -326,8 +327,14 @@ class SklearnSerializer(
         ):
             return "estimators_collection"
 
-        if isinstance(item, (list, tuple)) and item:  # If it's a list and not empty
+        # Handle tuples explicitly
+        if isinstance(item, tuple):
+            return tuple(self._get_nested_types(subitem) for subitem in item)
+
+        # Handle lists
+        if isinstance(item, list):
             return [self._get_nested_types(subitem) for subitem in item]
+        
         elif isinstance(item, BaseEstimator):
             # For estimators, return their class name instead of just 'BaseEstimator'
             return item.__class__.__name__
@@ -349,6 +356,12 @@ class SklearnSerializer(
             if isinstance(value, np.ndarray)
             or (isinstance(value, (list, tuple)) and value)  # non-empty list/tuple
         }
+
+        # Ensure tuples are not included in dtypes_map
+        for key, value in values_dict.items():
+            if isinstance(value, tuple):
+                dtypes_map.pop(key, None)  # Remove tuples from dtypes_map
+        
 
         return types_map, dtypes_map
 
@@ -868,6 +881,11 @@ class SklearnSerializer(
         param_types = data.get("param_types", {})
         param_dtypes = data.get("param_dtypes", {})
 
+        # Ensure tuples are reconstructed correctly
+        for key, value in params.items():
+            if param_types.get(key) == "tuple" and isinstance(value, list):
+                params[key] = tuple(value)
+
         # Get valid constructor arguments for the estimator
         estimator_cls = ALL_ESTIMATORS[estimator_class]
         valid_args = list(inspect.signature(estimator_cls.__init__).parameters.keys())
@@ -879,25 +897,19 @@ class SklearnSerializer(
             # Only include params that are valid constructor arguments
             if param_name not in valid_args:
                 continue
+            # Handle PatchExtractor's 'patch_size' parameter
+            if (
+                estimator_class == "PatchExtractor"
+                and param_name == "patch_size"
+                and isinstance(param_value, list)
+            ):
+                param_value = tuple(param_value)
             param_type = param_types.get(param_name)
             param_dtype = param_dtypes.get(param_name) or None
-            # Special handling for Pipeline steps
-            if estimator_class == "Pipeline" and param_name == "steps":
-                reconstructed_params[param_name] = [
-                    (
-                        name,
-                        (
-                            self.deserialize(est)
-                            if isinstance(est, dict) and "estimator_class" in est
-                            else est
-                        ),
-                    )
-                    for name, est in param_value
-                ]
-            else:
-                reconstructed_params[param_name] = self.convert_from_serializable(
-                    param_value, param_type, param_dtype
-                )
+            param_dtype = param_dtypes.get(param_name) or None
+            reconstructed_params[param_name] = self.convert_from_serializable(
+                param_value, param_type, param_dtype
+            )
         model = estimator_cls(**reconstructed_params)
 
         if "attributes" not in data:
@@ -914,8 +926,6 @@ class SklearnSerializer(
             # Skip _tree attribute for KDTree - let the transformer recreate it
             if attr_type == "KDTree":
                 model._tree = self._deserialize_kdtree(value)
-                continue
-            if estimator_class == "Pipeline" and attribute == "steps":
                 continue
             # Use convert_from_serializable for all attributes
             setattr(
