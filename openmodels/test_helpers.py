@@ -8,7 +8,8 @@ from typing import Optional, Union, Protocol, runtime_checkable, TypeVar, cast
 import numpy as np
 from numpy import testing
 from sklearn.base import BaseEstimator
-from sklearn.feature_extraction import FeatureHasher, GenericUnivariateSelect, f_classif
+from sklearn.feature_extraction import FeatureHasher
+from sklearn.feature_selection import GenericUnivariateSelect, f_classif
 from sklearn.preprocessing import LabelBinarizer
 from scipy.sparse import csr_matrix  # type: ignore
 
