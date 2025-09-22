@@ -258,15 +258,15 @@ class ScipySerializerMixin(SerializerMixin):
 
     # --- Handlers ---
     def _get_serializer_handlers(self):
-        return super()._get_serializer_handlers() + [
+        return [
             (csr_matrix, self._serialize_csr_matrix),
             (interp1d, self._serialize_interp1d),
             (rv_continuous_frozen, self._serialize_scipy_dist),
-        ]
+        ] + super()._get_serializer_handlers()
 
     def _get_deserializer_handlers(self):
-        return super()._get_deserializer_handlers() + [
+        return [
             ("csr_matrix", self._deserialize_csr_matrix),
             ("interp1d", self._deserialize_interp1d),
             ("scipy_dist", self._deserialize_scipy_dist),
-        ]
+        ] + super()._get_deserializer_handlers()
