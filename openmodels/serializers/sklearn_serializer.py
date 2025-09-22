@@ -89,9 +89,7 @@ NOT_SUPPORTED_ESTIMATORS: list[str] = [
     # Clusters: all clusters work!! Hurray!
     # Exceptions encountered during testing:
     # Transformers:
-    "ColumnTransformer",  # AttributeError: 'dict' object has no attribute 'transform'
     "FeatureHasher",  # TypeError: 'NoneType' object is not iterable
-    "FeatureUnion",  # AttributeError: 'dict' object has no attribute 'transform'
     "GenericUnivariateSelect",  # Object of type function is not JSON serializable
     "HashingVectorizer",  # AttributeError: 'numpy.ndarray' object has no attribute 'lower'
     "LatentDirichletAllocation",  # ValueError: setting an array element with a sequence. The requested array has
@@ -338,8 +336,8 @@ class SklearnSerializer(
             and isinstance(item[0], BaseEstimator)
         ):
             return "estimators_collection"
-        
-        if isinstance(item, List) and item:  # If it's a list and not empty
+
+        if isinstance(item, (list, tuple)) and item:  # If it's a list and not empty
             return [self._get_nested_types(subitem) for subitem in item]
         elif isinstance(item, BaseEstimator):
             # For estimators, return their class name instead of just 'BaseEstimator'
