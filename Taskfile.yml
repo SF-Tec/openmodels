@@ -45,3 +45,8 @@ tasks:
       - lint
       - format
       - type-check
+
+  build:
+    desc: Build the project
+    cmds:
+      - "poetry build"
