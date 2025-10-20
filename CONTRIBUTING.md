@@ -45,7 +45,7 @@ Before submitting your changes, please ensure your code passes formatting, linti
 ```bash
 task lint
 task format
-task type:check
+task type-check
 task test 
 ```
 For convenience: 
