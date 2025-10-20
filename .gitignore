@@ -45,9 +45,13 @@ sklearn_json.egg-info/
 .pytest_cache/
 .venv/
 .ipynb_checkpoints/
+
+# Poetry #
+##########
 poetry.lock
 
 # Testing #
 ###########
 test/temp/*.json
 .coverage
+.coverage.*
