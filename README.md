@@ -128,6 +128,8 @@ Please refer to our [Contributing Guidelines](https://github.com/SF-Tec/openmode
 
 ## Running Tests
 
+The package utilizes [Taskfile](https://taskfile.dev/) as a task runner to automate and standardize development flows.
+
 To run the tests:
 
 1. Clone the repository:
@@ -137,15 +139,16 @@ To run the tests:
    cd openmodels
    ```
 
-2. Install the package and its dependencies:
+2. Install the package and its development dependencies:
 
    ```bash
-   pip install -e .
+   task install:dev
    ```
 
 3. Run the tests:
+
    ```bash
-   pytest
+   task test
    ```
 
 ## License
