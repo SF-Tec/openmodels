@@ -37,7 +37,7 @@ tasks:
   test:cov:
     desc: Run tests with coverage report
     cmds:
-      - "poetry run pytest --cov={{.SRC_DIR}} -n auto test"
+      - "poetry run pytest --cov={{.SRC_DIR}} --cov-report=term-missing -n auto test"
 
   check:
     desc: Run all checks lint, format and type-check
