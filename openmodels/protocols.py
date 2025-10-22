@@ -12,6 +12,9 @@ from typing import Any, Dict, Protocol
 class ModelSerializer(Protocol):
     """Protocol for model serializers."""
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Concrete serializers may accept arbitrary args/kwargs."""
+
     @abstractmethod
     def serialize(self, model: Any) -> Dict[str, Any]:
         """
