@@ -49,5 +49,3 @@ sklearn_json.egg-info/
 # Testing #
 ###########
 test/temp/*.json
-.venv-sklearn-1-6-1/
-.venv-sklearn-1-7-2/
