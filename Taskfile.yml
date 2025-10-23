@@ -1,0 +1,52 @@
+version: "3"
+
+vars:
+  SRC_DIR: "openmodels"
+
+tasks:
+  install:
+    desc: Install project dependencies
+    cmds:
+      - "poetry install --without dev"
+
+  install:dev:
+    desc: Install project dependencies including dev dependencies
+    cmds:
+      - "poetry install"
+
+  lint:
+    desc: Run code linters using flake8
+    cmds:
+      - "poetry run flake8 {{.SRC_DIR}}"
+
+  format:
+    desc: Format code using black
+    cmds:
+      - "poetry run black {{.SRC_DIR}}"
+
+  type-check:
+    desc: Run type checking using mypy
+    cmds:
+      - "poetry run mypy {{.SRC_DIR}}"
+
+  test:
+    desc: Run tests using pytest
+    cmds:
+      - "poetry run pytest test"
+
+  test:cov:
+    desc: Run tests with coverage report
+    cmds:
+      - "poetry run pytest --cov={{.SRC_DIR}} --cov-report=term-missing test"
+
+  check:
+    desc: Run all checks lint, format and type-check
+    deps:
+      - lint
+      - format
+      - type-check
+
+  build:
+    desc: Build the project
+    cmds:
+      - "poetry build"
