@@ -40,14 +40,21 @@ Follow OpenModels coding style:
 - Avoid magic numbers or hard-coded strings
 - Format code using [Black](https://black.readthedocs.io/en/stable/)
 
-Before submitting your changes, please ensure your code passes formatting, linting, and type checks by running:
+Before submitting your changes, please ensure your code passes formatting, linting, and type checks by running. The project utilizes [Taskfile](https://taskfile.dev/) as a task runner to automate and standardize development flows.
 
 ```bash
-poetry run black openmodels
-poetry run flake8 openmodels
-poetry run mypy openmodels  
-
+task lint
+task format
+task type-check
+task test 
 ```
+For convenience: 
+
+```bash
+task check # lint, format and type check
+task test
+```
+
 ## Codecov
 
 Ensure your changes don't reduce OpenModels's test coverage. We use Codecov to track coverage.
