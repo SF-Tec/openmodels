@@ -269,12 +269,6 @@ class SklearnSerializer(
     To request official support for your package, please open an issue at:
     https://github.com/SF-Tec/openmodels/issues
 
-    Officially supported packages (with internal periodic tests)
-    -----------------------------------------------------------
-    - scikit-learn (core library)
-    - chemotools (https://github.com/chemotools/chemotools)
-        *Support for chemotools is experimental and integration is currently in progress.*
-
     """
 
     def __init__(
