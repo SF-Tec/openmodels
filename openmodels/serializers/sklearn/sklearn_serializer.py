@@ -74,7 +74,7 @@ KERNEL_REGISTRY = [
 ALL_ESTIMATORS = {
     name: cls for name, cls in all_estimators() if issubclass(cls, BaseEstimator)
 }
-# add _BinMapper to ALL_ESTIMATORS
+# add extra private estimators to ALL_ESTIMATORS
 ALL_ESTIMATORS["_BinMapper"] = _BinMapper
 ALL_ESTIMATORS["_SigmoidCalibration"] = _SigmoidCalibration
 ALL_ESTIMATORS["_BinaryGaussianProcessClassifierLaplace"] = (
