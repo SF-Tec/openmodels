@@ -27,7 +27,12 @@ def normalize_estimators(
     return list(estimators)
 
 
-def load_custom_estimators(custom_estimators, all_estimators) -> Dict[str, Type]:
+def load_custom_estimators(
+    custom_estimators: Union[
+        Callable[..., Any], List[Any], Tuple[Any, ...], Dict[str, Any]
+    ],
+    all_estimators: Dict[str, Type],
+) -> Dict[str, Type]:
     """Convert user-provided estimators into a dictionary of valid ones."""
     extra = {}
     for est in normalize_estimators(custom_estimators):
